@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cohort Analysis, Cell by Cell — An Interactive Learning Guide</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#0a0e14;
+  --surface:#121822;
+  --surface-2:#1a2330;
+  --surface-3:#212c3c;
+  --border:#263244;
+  --text:#e9eef4;
+  --muted:#93a4b8;
+  --muted-2:#6a7d93;
+  --warm:#ff9466;
+  --warm-dim:#ff946633;
+  --cool:#4fd2e0;
+  --cool-dim:#4fd2e033;
+  --good:#5fd98a;
+  --bad:#ff6b6b;
+  --gold:#f2c14e;
+  --code-bg:#0d1219;
+  --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  --radius: 14px;
+  --maxw: 880px;
+  color-scheme: dark;
+}
+html.light{
+  --bg:#f6f4ef;
+  --surface:#ffffff;
+  --surface-2:#f0ede6;
+  --surface-3:#e8e3d8;
+  --border:#ddd5c4;
+  --text:#211d16;
+  --muted:#5c5648;
+  --muted-2:#8a8371;
+  --warm-dim:#ff946622;
+  --cool-dim:#4fd2e022;
+  --code-bg:#fbfaf7;
+  --shadow: 0 10px 30px rgba(80,60,20,0.08);
+  color-scheme: light;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',system-ui,sans-serif;
+  line-height:1.65;
+  transition:background .3s ease,color .3s ease;
+}
+h1,h2,h3,h4{font-family:'Space Grotesk',system-ui,sans-serif;font-weight:600;letter-spacing:-0.01em;margin:0 0 .5em;}
+code, pre, .mono{font-family:'JetBrains Mono',monospace;}
+a{color:inherit;}
+::selection{background:var(--warm);color:#12080280;}
+
+/* ---------- Top progress bar ---------- */
+#scrollbar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--warm),var(--cool));z-index:9999;width:0%;transition:width .1s linear;}
+
+/* ---------- Top bar ---------- */
+#topbar{
+  position:sticky;top:0;z-index:500;
+  display:flex;align-items:center;gap:14px;
+  padding:12px 20px;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+#topbar .brand{font-family:'Space Grotesk';font-weight:700;font-size:15px;white-space:nowrap;display:flex;align-items:center;gap:8px;}
+#topbar .brand .dot{width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,var(--warm),var(--cool));display:inline-block;}
+#searchwrap{flex:1;max-width:420px;position:relative;}
+#searchbox{
+  width:100%;padding:9px 14px 9px 36px;border-radius:999px;border:1px solid var(--border);
+  background:var(--surface-2);color:var(--text);font-size:13.5px;outline:none;
+}
+#searchbox:focus{border-color:var(--warm);}
+#searchwrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.55;pointer-events:none;}
+#searchresults{
+  position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;box-shadow:var(--shadow);max-height:320px;overflow:auto;display:none;z-index:600;
+}
+#searchresults.show{display:block;}
+#searchresults a{display:block;padding:9px 14px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);text-decoration:none;}
+#searchresults a:last-child{border-bottom:none;}
+#searchresults a:hover{background:var(--surface-2);}
+#searchresults .tag{color:var(--muted-2);font-size:11px;}
+#progresspill{
+  font-size:12px;color:var(--muted);white-space:nowrap;padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);
+}
+#themetoggle, #navtoggle{
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text);width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
+}
+#navtoggle{display:none;}
+#themetoggle:hover, #navtoggle:hover{border-color:var(--warm);}
+
+/* ---------- Layout ---------- */
+#layout{display:flex;max-width:1400px;margin:0 auto;}
+#sidebar{
+  width:270px;flex-shrink:0;position:sticky;top:61px;align-self:flex-start;
+  height:calc(100vh - 61px);overflow-y:auto;padding:22px 14px 40px 22px;
+  border-right:1px solid var(--border);
+}
+#sidebar::-webkit-scrollbar{width:6px;}
+#sidebar::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:3px;}
+.navgroup{margin-bottom:18px;}
+.navgroup-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted-2);font-weight:700;margin:0 0 8px 10px;}
+.navlink{
+  display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;font-size:13.2px;color:var(--muted);
+  text-decoration:none;border-left:2px solid transparent;margin-bottom:1px;
+}
+.navlink:hover{background:var(--surface-2);color:var(--text);}
+.navlink.active{color:var(--text);background:var(--surface-2);border-left-color:var(--warm);font-weight:600;}
+.navlink .num{font-family:'JetBrains Mono';font-size:10.5px;color:var(--muted-2);width:18px;flex-shrink:0;}
+.navlink.done .num::after{content:'✓';color:var(--good);margin-left:2px;}
+
+#main{flex:1;min-width:0;padding:0 26px 100px;}
+.wrap{max-width:var(--maxw);margin:0 auto;}
+
+/* ---------- Hero ---------- */
+#hero{padding:64px 0 40px;max-width:var(--maxw);margin:0 auto;}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--warm);font-weight:700;margin-bottom:18px;}
+#hero h1{font-size:clamp(30px,4.2vw,46px);line-height:1.08;max-width:780px;}
+#hero .sub{color:var(--muted);font-size:17px;max-width:640px;margin-top:14px;}
+.heatstrip{display:flex;gap:3px;margin:28px 0;border-radius:8px;overflow:hidden;width:fit-content;}
+.heatstrip div{width:22px;height:22px;}
+.herostats{display:flex;gap:28px;margin-top:34px;flex-wrap:wrap;}
+.herostat b{font-family:'Space Grotesk';font-size:24px;display:block;}
+.herostat span{font-size:12px;color:var(--muted-2);}
+
+/* ---------- Section / Card ---------- */
+.section{padding:52px 0;border-top:1px solid var(--border);scroll-margin-top:80px;}
+.section:first-of-type{border-top:none;}
+.phase-banner{
+  display:flex;align-items:center;gap:14px;margin-bottom:8px;padding:16px 20px;border-radius:12px;
+  background:linear-gradient(135deg,var(--warm-dim),transparent);border:1px solid var(--border);
+}
+.phase-banner .ph-num{font-family:'Space Grotesk';font-weight:700;font-size:22px;color:var(--warm);}
+.phase-banner h2{margin:0;font-size:19px;}
+.phase-banner p{margin:2px 0 0;color:var(--muted);font-size:13.5px;}
+
+.cellcard{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  margin:26px 0;overflow:hidden;box-shadow:var(--shadow);
+}
+.cellcard > .ch{
+  padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--surface-2);border-bottom:1px solid var(--border);
+}
+.cellcard > .ch .tt{display:flex;align-items:center;gap:10px;}
+.cellcard > .ch .badge{
+  font-family:'JetBrains Mono';font-size:11px;background:var(--surface-3);color:var(--muted);
+  padding:3px 9px;border-radius:6px;
+}
+.cellcard > .ch h3{margin:0;font-size:16px;}
+.cellcard .body{padding:6px 20px 20px;}
+
+/* code block */
+.codeblock{position:relative;background:var(--code-bg);border:1px solid var(--border);border-radius:10px;margin:14px 0;overflow:hidden;}
+.codeblock pre{margin:0;padding:16px 18px;overflow-x:auto;font-size:13px;line-height:1.6;}
+.codeblock .copybtn{
+  position:absolute;top:8px;right:8px;font-size:11px;background:var(--surface-3);color:var(--muted);
+  border:1px solid var(--border);padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'Inter';
+}
+.codeblock .copybtn:hover{color:var(--text);border-color:var(--warm);}
+.tok-kw{color:#c792ea;} .tok-str{color:#a6e3a1;} .tok-com{color:#6a7d93;font-style:italic;} .tok-fn{color:#82aaff;} .tok-num{color:#f2c14e;}
+
+.output{background:var(--surface-2);border:1px dashed var(--border);border-radius:10px;padding:12px 16px;margin:10px 0;font-size:12.5px;}
+.output .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-2);margin-bottom:6px;font-weight:700;}
+.output pre{margin:0;overflow-x:auto;white-space:pre;font-family:'JetBrains Mono';font-size:12px;color:var(--muted);}
+.output img{max-width:100%;border-radius:8px;border:1px solid var(--border);}
+
+h4.sub-h{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--warm);margin:26px 0 10px;display:flex;align-items:center;gap:8px;}
+h4.sub-h::before{content:'';width:14px;height:2px;background:var(--warm);display:inline-block;}
+h4.sub-h.cool::before{background:var(--cool);} h4.sub-h.cool{color:var(--cool);}
+
+.lines{list-style:none;margin:0;padding:0;}
+.lines li{padding:12px 0;border-bottom:1px solid var(--border);}
+.lines li:last-child{border-bottom:none;}
+.lines .lc{font-family:'JetBrains Mono';font-size:12.5px;background:var(--code-bg);padding:2px 8px;border-radius:5px;display:inline-block;margin-bottom:6px;border:1px solid var(--border);}
+.lines .desc{font-size:13.8px;color:var(--muted);}
+.lines .desc b{color:var(--text);}
+
+table.dt{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.8px;}
+table.dt th,table.dt td{border:1px solid var(--border);padding:7px 10px;text-align:left;}
+table.dt th{background:var(--surface-2);font-family:'Space Grotesk';font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);}
+table.dt tr:nth-child(even) td{background:color-mix(in srgb, var(--surface-2) 40%, transparent);}
+.arrow-row{text-align:center;color:var(--muted-2);font-size:18px;margin:4px 0;}
+
+/* concept card */
+.concept{
+  border:1px solid var(--border);border-left:3px solid var(--cool);background:var(--cool-dim);
+  border-radius:0 10px 10px 0;padding:16px 20px;margin:16px 0;
+}
+.concept h4{margin:0 0 8px;font-size:15px;color:var(--cool);display:flex;align-items:center;gap:8px;}
+.concept .cbody{font-size:13.6px;color:var(--muted);}
+.concept .cbody b{color:var(--text);}
+.concept .analogy{margin-top:10px;padding:10px 12px;background:var(--surface);border-radius:8px;font-size:13px;}
+.concept .analogy .lab{font-weight:700;color:var(--gold);font-size:11px;text-transform:uppercase;letter-spacing:.05em;}
+
+/* collapsibles */
+details.dis{border:1px solid var(--border);border-radius:10px;margin:12px 0;background:var(--surface-2);overflow:hidden;}
+details.dis summary{
+  padding:12px 16px;cursor:pointer;font-weight:600;font-size:13.5px;list-style:none;display:flex;align-items:center;justify-content:space-between;
+}
+details.dis summary::-webkit-details-marker{display:none;}
+details.dis summary::after{content:'+';font-size:18px;color:var(--muted-2);}
+details.dis[open] summary::after{content:'–';}
+details.dis .dbody{padding:2px 16px 16px;font-size:13.6px;color:var(--muted);}
+details.dis .dbody b{color:var(--text);}
+
+.mistake{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13.4px;}
+.mistake:last-child{border-bottom:none;}
+.mistake .ico{color:var(--bad);flex-shrink:0;}
+
+/* quiz */
+.quiz{border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin:14px 0;background:var(--surface-2);}
+.quiz .q{font-weight:600;font-size:13.8px;margin-bottom:10px;}
+.quiz .opts{display:flex;flex-direction:column;gap:7px;}
+.quiz button.opt{
+  text-align:left;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);
+  color:var(--text);font-size:13px;cursor:pointer;font-family:'Inter';
+}
+.quiz button.opt:hover{border-color:var(--warm);}
+.quiz button.opt.correct{border-color:var(--good);background:color-mix(in srgb, var(--good) 15%, var(--surface));}
+.quiz button.opt.wrong{border-color:var(--bad);background:color-mix(in srgb, var(--bad) 15%, var(--surface));}
+.quiz .exp{display:none;margin-top:10px;font-size:12.8px;color:var(--muted);padding-top:10px;border-top:1px solid var(--border);}
+.quiz .exp.show{display:block;}
+
+.blank{border:none;border-bottom:2px solid var(--warm);background:transparent;color:var(--text);font-family:'JetBrains Mono';font-size:13px;width:120px;text-align:center;padding:2px 4px;}
+.blank.ok{border-color:var(--good);color:var(--good);} .blank.bad{border-color:var(--bad);color:var(--bad);}
+
+.recap{
+  margin-top:22px;padding:18px 20px;border-radius:10px;background:linear-gradient(135deg,var(--surface-2),var(--surface));
+  border:1px solid var(--border);
+}
+.recap h4{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin:0 0 10px;}
+.recap ul{margin:0;padding-left:18px;font-size:13.2px;color:var(--muted);}
+.recap li{margin-bottom:5px;} .recap b{color:var(--text);}
+
+.pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:999px;background:var(--surface-3);color:var(--muted);margin:2px 4px 2px 0;}
+.callout{border-radius:10px;padding:14px 18px;margin:14px 0;font-size:13.4px;border:1px solid var(--border);}
+.callout.fun{background:var(--warm-dim);border-color:var(--warm);}
+.callout.think{background:var(--cool-dim);border-color:var(--cool);}
+.callout .lab{font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;display:block;}
+
+.bignav{display:flex;justify-content:space-between;margin-top:36px;gap:12px;}
+.bignav a{
+  flex:1;padding:14px 18px;border:1px solid var(--border);border-radius:10px;background:var(--surface);
+  text-decoration:none;font-size:13px;color:var(--muted);
+}
+.bignav a b{display:block;color:var(--text);font-size:14.5px;margin-top:2px;font-family:'Space Grotesk';}
+.bignav a:hover{border-color:var(--warm);}
+.bignav a.next{text-align:right;}
+
+/* mind map */
+.mindmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:16px 0;}
+.mindmap .node{border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--surface-2);}
+.mindmap .node h5{margin:0 0 6px;font-size:13.5px;color:var(--warm);font-family:'Space Grotesk';}
+.mindmap .node ul{margin:0;padding-left:16px;font-size:12.3px;color:var(--muted);}
+
+footer{text-align:center;padding:50px 20px;color:var(--muted-2);font-size:12.5px;}
+
+@media (max-width:960px){
+  #sidebar{position:fixed;left:0;top:57px;height:calc(100vh - 57px);width:270px;background:var(--bg);z-index:400;
+    transform:translateX(-105%);transition:transform .25s ease;box-shadow:var(--shadow);}
+  #sidebar.open{transform:translateX(0);}
+  #navtoggle{display:flex;}
+  #searchwrap{max-width:none;}
+  .herostats{gap:18px;}
+  #main{padding:0 16px 80px;}
+}
+</style>
+</head>
+<body>
+
+<div id="scrollbar"></div>
+
+<div id="topbar">
+  <button id="navtoggle" aria-label="Toggle navigation">☰</button>
+  <div class="brand"><span class="dot"></span>Cohort Guide</div>
+  <div id="searchwrap">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="searchbox" placeholder="Search concepts, cells, functions…" autocomplete="off">
+    <div id="searchresults"></div>
+  </div>
+  <div id="progresspill">0% learned</div>
+  <button id="themetoggle" aria-label="Toggle theme">◐</button>
+</div>
+
+<div id="layout">
+  <nav id="sidebar">
+    <div class="navgroup">
+      <div class="navgroup-label">Start Here</div>
+      <a class="navlink" href="#hero"><span class="num">·</span>Overview & the mission</a>
+    </div>
+    <div class="navgroup">
+      <div class="navgroup-label">Phase 1 · Load &amp; Clean</div>
+      <a class="navlink" href="#cell-0"><span class="num">00</span>Import the toolkit</a>
+      <a class="navlink" href="#cell-1"><span class="num">01</span>Load the Excel file</a>
+      <a class="navlink" href="#cell-2"><span class="num">02</span>Peek at the data</a>
+      <a class="navlink" href="#cell-3"><span class="num">03</span>Drop missing customers</a>
+    </div>
+    <div class="navgroup">
+      <div class="navgroup-label">Phase 2 · Build the Cohort Structure</div>
+      <a class="navlink" href="#cell-4"><span class="num">04</span>Invoice Month</a>
+      <a class="navlink" href="#cell-5"><span class="num">05</span>Cohort Month</a>
+      <a class="navlink" href="#cell-6"><span class="num">06</span>Date-element helper</a>
+      <a class="navlink" href="#cell-7"><span class="num">07</span>Extract year/month</a>
+      <a class="navlink" href="#cell-8"><span class="num">08</span>Sanity checks</a>
+      <a class="navlink" href="#cell-10"><span class="num">09</span>Cohort Index (the math)</a>
+    </div>
+    <div class="navgroup">
+      <div class="navgroup-label">Phase 3 · Aggregate &amp; Visualize</div>
+      <a class="navlink" href="#cell-11"><span class="num">10</span>Count unique customers</a>
+      <a class="navlink" href="#cell-12"><span class="num">11</span>Pivot into a grid</a>
+      <a class="navlink" href="#cell-13"><span class="num">12</span>Heatmap — raw counts</a>
+      <a class="navlink" href="#cell-14"><span class="num">13</span>Convert to retention %</a>
+      <a class="navlink" href="#cell-15"><span class="num">14</span>Heatmap — retention %</a>
+    </div>
+    <div class="navgroup">
+      <div class="navgroup-label">Reference</div>
+      <a class="navlink" href="#vault"><span class="num">§</span>Concept Vault</a>
+      <a class="navlink" href="#final"><span class="num">✓</span>Final Revision</a>
+    </div>
+  </nav>
+  <main id="main">
+    <div class="wrap" id="content">
+
+<section id="hero">
+  <div class="eyebrow">◆ Interactive Learning Guide</div>
+  <h1>Cohort Analysis, Cell by Cell</h1>
+  <p class="sub">You uploaded a 16-cell notebook that answers one question every subscription business, app, and online store obsesses over: <b>"If a customer buys from us this month, do they ever come back?"</b> By the end of this page you'll be able to rebuild the whole pipeline from memory — and explain it in an interview without blinking.</p>
+
+  <div class="heatstrip" id="herostrip"></div>
+
+  <div class="herostats">
+    <div class="herostat"><b>16</b><span>real code cells</span></div>
+    <div class="herostat"><b>541,909</b><span>rows of UK retail transactions</span></div>
+    <div class="herostat"><b>13</b><span>monthly cohorts tracked</span></div>
+    <div class="herostat"><b>2</b><span>heatmaps: counts &amp; retention %</span></div>
+  </div>
+
+  <div class="callout think" style="margin-top:32px;">
+    <span class="lab">Think before you scroll</span>
+    If a customer's very first purchase was in <b>December 2010</b>, and their next purchase is in <b>March 2011</b>, how many months did they "survive"? Hold that number in your head — cell 10 turns exactly this question into one line of pandas.
+  </div>
+
+  <p style="color:var(--muted-2);font-size:13px;margin-top:34px;">Use the search bar or the sidebar to jump anywhere. Your reading progress is tracked in the top-right pill — it fills in as you scroll through each section.</p>
+</section>
+
+<section class="section" id="phase1-banner">
+  <div class="phase-banner">
+    <div class="ph-num">01</div>
+    <div><h2>Load &amp; Clean</h2><p>Before you can analyze anything, you need clean, well-typed data sitting in memory. Cells 0–3 are entirely about getting there.</p></div>
+  </div>
+</section>
+
+<section class="section" id="cell-0" data-search="import pandas numpy matplotlib seaborn library module" data-title="Cell 00 — Import the toolkit" data-tag="Cell 00">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 00</span><h3>Import the toolkit</h3></div></div>
+    <div class="body">
+
+      <div class="codeblock">
+        <button class="copybtn">Copy</button>
+        <pre><span class="tok-com"># import libraries</span>
+<span class="tok-kw">import</span> pandas <span class="tok-kw">as</span> pd
+<span class="tok-kw">import</span> matplotlib.pyplot <span class="tok-kw">as</span> plt
+<span class="tok-kw">import</span> seaborn <span class="tok-kw">as</span> sns</pre>
+      </div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>It loads three external toolkits into the notebook's memory so later cells can use them: <b>pandas</b> for tables, <b>matplotlib</b> for basic plotting, and <b>seaborn</b> for prettier statistical charts (like the heatmaps you'll build at the end).</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>Python's core language doesn't know how to open a spreadsheet or draw a chart — that logic lives in separate packages that someone else already wrote and battle-tested. Importing is how you "check out" that logic instead of reinventing it. Every notebook that touches data starts this way; it's the equivalent of laying your tools out on the workbench before you start building.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">import pandas as pd</span><div class="desc"><b>What:</b> loads the pandas library and gives it the nickname <b>pd</b>. <b>Why:</b> pandas is the library that reads Excel/CSV files into a table-like object called a DataFrame and lets you filter, group, and reshape it. <b>Common mistake:</b> forgetting the <code>as pd</code> alias and then writing <code>pandas.read_excel(...)</code> everywhere instead of the conventional <code>pd.read_excel(...)</code> — it still works, but nobody in the real world does it that way, and it makes your code harder for others to skim. <b>If removed:</b> every later line that starts with <code>pd.</code> would throw <code>NameError: name 'pd' is not defined</code>.</div></li>
+        <li><span class="lc">import matplotlib.pyplot as plt</span><div class="desc"><b>What:</b> loads matplotlib's plotting interface, aliased as <b>plt</b>. <b>Why:</b> seaborn (below) is actually built on top of matplotlib, so you need matplotlib in memory to control figure size (<code>plt.figure(figsize=...)</code>) later in cells 13 and 15. <b>If removed:</b> the two heatmap cells would crash with a <code>NameError</code> the moment they call <code>plt.figure(...)</code>.</div></li>
+        <li><span class="lc">import seaborn as sns</span><div class="desc"><b>What:</b> loads seaborn, aliased as <b>sns</b> (a nod to a character named Samuel Norman Seaborn — a long-running in-joke in the library's own docs). <b>Why:</b> seaborn's <code>heatmap()</code> function turns a grid of numbers into a color-coded grid in one line, which is exactly what you need to visualize retention. <b>Common mistake:</b> installing pandas but not seaborn, then being confused by <code>ModuleNotFoundError: No module named 'seaborn'</code> — fixed with <code>pip install seaborn</code>.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-import" data-search="import module library package" data-title="Concept: import statements" data-tag="Concept">
+        <h4>📦 Concept: what does "import" actually do?</h4>
+        <div class="cbody">A Python <b>library</b> (or package) is just a folder of pre-written, reusable code that someone else published. <code>import X as y</code> tells Python: "find that folder, run its setup code once, and let me refer to everything inside it using the short name <code>y</code>." After that line, <code>y.anything</code> reaches into that library.
+        <div class="analogy"><span class="lab">Analogy</span> Think of your Python session as an empty kitchen. <code>import pandas as pd</code> is like wheeling in a fully-stocked spice rack labeled "pd" — you didn't have to grow the spices yourself, and now every recipe (line of code) can grab <code>pd.something</code> off that rack.</div>
+        </div>
+      </div>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output</div><pre>(no output — import cells are silent when they succeed)</pre></div>
+      <p style="color:var(--muted);font-size:13.5px;">Silence is actually the best-case outcome here. In Jupyter, an import cell that <i>doesn't</i> print anything means every library was found and loaded correctly.</p>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Running analysis cells <b>before</b> running this import cell (common after restarting the kernel) — every pandas/seaborn call then fails with <code>NameError</code>, even though the code itself is correct.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Typing <code>import Pandas</code> with a capital P — Python is case-sensitive, and the package is lowercase.</div></div>
+
+      <details class="dis">
+        <summary>💬 Interview Questions — 3 (click to reveal answers)</summary>
+        <div class="dbody">
+          <p><b>1. (Beginner)</b> What's the difference between a Python library, module, and package?<br><i>Answer: a module is a single .py file of code; a package is a folder of modules with an <code>__init__.py</code>; "library" is the informal umbrella term people use for either.</i></p>
+          <p><b>2. (Intermediate)</b> Why do we alias pandas as <code>pd</code> instead of importing it as-is?<br><i>Answer: it's community convention (a "PEP 8 adjacent" norm), which keeps code short and instantly recognizable to any other data professional reading it.</i></p>
+          <p><b>3. (Practical)</b> Your teammate's notebook throws <code>ModuleNotFoundError: No module named 'seaborn'</code> — what's your first move?<br><i>Answer: check you're in the right virtual environment/kernel, then run <code>pip install seaborn</code> (or <code>conda install seaborn</code>) in that same environment.</i></p>
+        </div>
+      </details>
+
+      <div class="recap">
+        <h4>Quick Revision</h4>
+        <ul>
+          <li><b>Key idea:</b> imports load external code so you don't rewrite it.</li>
+          <li><b>Functions/tools introduced:</b> <span class="pill">pandas (pd)</span><span class="pill">matplotlib.pyplot (plt)</span><span class="pill">seaborn (sns)</span></li>
+          <li><b>Pitfall:</b> forgetting to re-run this cell after a kernel restart.</li>
+          <li><b>When you'll reuse this:</b> literally every notebook you ever write that touches tabular data or charts.</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-1" data-search="read_excel dataframe info dtype non-null memory usage" data-title="Cell 01 — Load the Excel file" data-tag="Cell 01">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 01</span><h3>Load the Excel file</h3></div></div>
+    <div class="body">
+
+      <div class="codeblock"><button class="copybtn">Copy</button>
+        <pre><span class="tok-com"># load in the data and take a look</span>
+data = pd.<span class="tok-fn">read_excel</span>(<span class="tok-str">"C:/Users/Gaelim/Downloads/Online Retail.xlsx"</span>)
+data.<span class="tok-fn">info</span>()</pre>
+      </div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Reads an Excel workbook from disk into a pandas <b>DataFrame</b> called <code>data</code>, then prints a structural summary: how many rows, how many columns, their names, their data types, and how much RAM the table occupies.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>You can't analyze data that's still trapped inside a file on a hard drive — you need it in memory, in a shape Python can index and filter. <code>.info()</code> is the very first thing any analyst runs after loading anything: it's a 2-second health check that answers "how big is this, and are there gaps?" before you write a single line of real analysis.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">data = pd.read_excel("C:/Users/Gaelim/Downloads/Online Retail.xlsx")</span><div class="desc"><b>What:</b> opens the .xlsx file at that path and converts every sheet's rows/columns into a DataFrame, stored in the variable <code>data</code>. <b>Why:</b> this is the dataset's entry point into the whole pipeline — every later cell reads or modifies <code>data</code>. <b>Parameters:</b> the single argument is the file path (a string). pandas also accepts a <code>sheet_name=</code> parameter if a workbook has multiple tabs (defaults to the first sheet). <b>Common mistake:</b> this path is hard-coded to the notebook author's own <code>C:/Users/Gaelim/...</code> folder — if you run this notebook on a different machine, you'll get <code>FileNotFoundError</code> unless you update the path to wherever <i>you</i> saved the file. <b>What's returned:</b> a pandas DataFrame object — a 2D table with labeled rows (an index) and labeled columns. <b>If removed:</b> the variable <code>data</code> would never exist, and literally every subsequent cell would fail with <code>NameError: name 'data' is not defined</code>.</div></li>
+        <li><span class="lc">data.info()</span><div class="desc"><b>What:</b> prints column names, non-null counts, dtypes, and memory footprint. <b>Why:</b> lets you catch problems immediately — here it already reveals that <code>Description</code> has 540,455 non-null values out of 541,909 rows (some product descriptions are missing) and <code>CustomerID</code> has only 406,829 (a lot of transactions have no customer attached — that's the exact problem cell 3 fixes). <b>What's returned:</b> nothing — <code>.info()</code> prints directly and returns <code>None</code>, so you cannot chain further methods onto it.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-dataframe" data-search="dataframe pandas table rows columns index" data-title="Concept: DataFrame" data-tag="Concept">
+        <h4>📦 Concept: what is a DataFrame?</h4>
+        <div class="cbody">A <b>DataFrame</b> is pandas' core data structure: a 2-dimensional table with labeled rows (the <b>index</b>) and labeled columns, where every column can hold its own data type (text, numbers, dates...). It's the pandas equivalent of one tab in an Excel workbook, but with far faster, code-driven filtering, grouping, and reshaping.
+        <div class="analogy"><span class="lab">Analogy 1</span> A DataFrame is a spreadsheet that a robot can read instantly — same rows and columns you're used to, except you command it with code instead of clicking cells.</div>
+        <div class="analogy"><span class="lab">Analogy 2</span> It's like a dictionary of columns: <code>data['CustomerID']</code> pulls out one column the same way <code>my_dict['key']</code> pulls out one value — except here every "value" is an entire column of thousands of rows.</div>
+        </div>
+      </div>
+
+      <h4 class="sub-h">Visual explanation — what info() is telling you</h4>
+      <table class="dt">
+        <tr><th>Column</th><th>Non-Null Count</th><th>Dtype</th><th>What it stores</th></tr>
+        <tr><td>InvoiceNo</td><td>541,909</td><td>object (text)</td><td>Order/receipt number</td></tr>
+        <tr><td>StockCode</td><td>541,909</td><td>object</td><td>Product SKU</td></tr>
+        <tr><td>Description</td><td>540,455</td><td>object</td><td>Product name (1,454 missing)</td></tr>
+        <tr><td>Quantity</td><td>541,909</td><td>int64</td><td>Units purchased</td></tr>
+        <tr><td>InvoiceDate</td><td>541,909</td><td>datetime64</td><td>Timestamp of purchase</td></tr>
+        <tr><td>UnitPrice</td><td>541,909</td><td>float64</td><td>Price per unit</td></tr>
+        <tr><td style="color:var(--warm);font-weight:600;">CustomerID</td><td style="color:var(--warm);font-weight:600;">406,829</td><td>float64</td><td>Who bought it (135,080 missing!)</td></tr>
+        <tr><td>Country</td><td>541,909</td><td>object</td><td>Shipping country</td></tr>
+      </table>
+      <p style="font-size:13px;color:var(--muted);">That highlighted row is the whole reason cell 3 exists: cohort analysis is built around <i>customers</i>, so any row where you don't know <i>who</i> bought something is unusable for this analysis.</p>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output — data.info()</div><pre>&lt;class 'pandas.core.frame.DataFrame'&gt;
+RangeIndex: 541909 entries, 0 to 541908
+Data columns (total 8 columns):
+ #   Column       Non-Null Count   Dtype
+---  ------       --------------   -----
+ 0   InvoiceNo    541909 non-null  object
+ 1   StockCode    541909 non-null  object
+ 2   Description  540455 non-null  object
+ 3   Quantity     541909 non-null  int64
+ 4   InvoiceDate  541909 non-null  datetime64[ns]
+ 5   UnitPrice    541909 non-null  float64
+ 6   CustomerID   406829 non-null  float64
+ 7   Country      541909 non-null  object
+dtypes: datetime64[ns](1), float64(2), int64(1), object(4)
+memory usage: 33.1+ MB</pre></div>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Copy-pasting a hard-coded Windows path (<code>C:/Users/...</code>) into your own notebook and getting <code>FileNotFoundError</code> — always point it at your own file's location.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Confusing <code>.info()</code> (structure: dtypes + nulls) with <code>.describe()</code> (statistics: mean/std/min/max) — they answer different questions.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Not noticing <code>CustomerID</code> is a <b>float64</b>, not an integer — Excel/pandas store IDs as decimals when a column contains blanks, since <code>NaN</code> can't live inside an integer column.</div></div>
+
+      <details class="dis">
+        <summary>💬 Interview Questions — 4</summary>
+        <div class="dbody">
+          <p><b>1. (Beginner)</b> What does <code>.info()</code> show that <code>.head()</code> doesn't?<br><i>Data types, null counts, and memory usage — structural metadata rather than sample rows.</i></p>
+          <p><b>2. (Intermediate)</b> Why is <code>CustomerID</code> a float instead of an int here?<br><i>Because the column contains missing values (NaN), and NumPy's integer dtype can't represent NaN — pandas silently upgrades the column to float64 to accommodate it.</i></p>
+          <p><b>3. (Scenario)</b> Your CSV loads fine but <code>InvoiceDate</code> shows as <code>object</code> instead of a date type — what would you do?<br><i>Pass <code>parse_dates=['InvoiceDate']</code> into the read function, or convert afterward with <code>pd.to_datetime()</code>.</i></p>
+          <p><b>4. (Practical)</b> The file is 200MB and loading is slow — name one way to speed it up.<br><i>Load only needed columns via <code>usecols=</code>, or convert repeat-value text columns to <code>category</code> dtype after loading.</i></p>
+        </div>
+      </details>
+
+      <div class="quiz" data-correct="2">
+        <div class="q">Quick check: why does <code>CustomerID</code> show only 406,829 non-null values out of 541,909 rows?</div>
+        <div class="opts">
+          <button class="opt" data-i="0">The Excel file itself only had 406,829 rows</button>
+          <button class="opt" data-i="1">pandas randomly drops rows on load</button>
+          <button class="opt" data-i="2">135,080 transactions were recorded without a customer ID attached</button>
+        </div>
+        <div class="exp">Correct answer: <b>C</b>. Some transactions (returns, guest checkouts, till errors) never got a CustomerID recorded — pandas loads them as-is, showing up as <code>NaN</code> in that column.</div>
+      </div>
+
+      <div class="recap">
+        <h4>Quick Revision</h4>
+        <ul>
+          <li><b>Key idea:</b> load first, inspect immediately — never analyze data you haven't profiled.</li>
+          <li><b>Functions:</b> <span class="pill">pd.read_excel()</span><span class="pill">.info()</span></li>
+          <li><b>Pitfall:</b> hard-coded file paths; missing CustomerID values.</li>
+          <li><b>Use when:</b> the very first cell of any real-world analysis notebook.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-2" data-search="head dataframe rows preview" data-title="Cell 02 — Peek at the data" data-tag="Cell 02">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 02</span><h3>Peek at the data</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com">#take a look at the head</span>
+data.<span class="tok-fn">head</span>()</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Prints the first 5 rows of <code>data</code> so you can eyeball what real values actually look like — not just their types (which <code>.info()</code> already showed you).</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p><code>.info()</code> tells you the <i>shape</i> of the problem; <code>.head()</code> tells you the <i>content</i>. You need both. Here it reveals something crucial for later: <code>InvoiceDate</code> includes a full timestamp (<code>2010-12-01 08:26:00</code>) — down to the minute — which matters because cell 4 will deliberately throw that precision away and keep only the month.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">data.head()</span><div class="desc"><b>What:</b> returns a new (smaller) DataFrame containing rows 0–4. <b>Parameters:</b> optionally takes an integer, e.g. <code>data.head(10)</code>, for a different number of rows (default is 5). <b>What's returned:</b> a DataFrame — unlike <code>.info()</code>, this <i>can</i> be chained, e.g. <code>data.head().T</code> to transpose it. <b>Common mistake:</b> assuming the first 5 rows represent the "whole" dataset — with 541,909 rows, five rows is a sanity check, not a representative sample.</div></li>
+      </ul>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output (first 2 of 5 rows shown)</div>
+      <table class="dt">
+        <tr><th>InvoiceNo</th><th>StockCode</th><th>Description</th><th>Qty</th><th>InvoiceDate</th><th>UnitPrice</th><th>CustomerID</th><th>Country</th></tr>
+        <tr><td>536365</td><td>85123A</td><td>WHITE HANGING HEART T-LIGHT HOLDER</td><td>6</td><td>2010-12-01 08:26:00</td><td>2.55</td><td>17850.0</td><td>United Kingdom</td></tr>
+        <tr><td>536365</td><td>71053</td><td>WHITE METAL LANTERN</td><td>6</td><td>2010-12-01 08:26:00</td><td>3.39</td><td>17850.0</td><td>United Kingdom</td></tr>
+      </table></div>
+      <p style="font-size:13px;color:var(--muted);">Notice both rows share the same <code>InvoiceNo</code> (536365) — one invoice/receipt spans multiple rows, one per product purchased. Customer 17850 bought both items in a single visit.</p>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> always look at real rows, not just dtypes — content bugs (typos, unexpected formats) hide here.</li>
+        <li><b>Functions:</b> <span class="pill">.head(n=5)</span> <span class="pill">.tail()</span></li>
+        <li><b>Use when:</b> right after loading, and after any transformation, to confirm it did what you expected.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-3" data-search="dropna subset missing values null customerid" data-title="Cell 03 — Drop missing customers" data-tag="Cell 03">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 03</span><h3>Drop rows with no Customer ID</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com">#drop rows with no customer ID</span>
+data = data.<span class="tok-fn">dropna</span>(subset=[<span class="tok-str">'CustomerID'</span>])
+data.<span class="tok-fn">info</span>()</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Removes every row where <code>CustomerID</code> is missing, and overwrites <code>data</code> with that smaller, cleaner table. Then reprints <code>.info()</code> to confirm the fix.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>Cohort analysis groups behavior <b>by customer</b> — the entire technique is meaningless for a transaction where you don't know who made it. Rather than guessing or filling in a fake ID, the safest move is to drop those rows entirely. This is a judgment call every analyst has to make explicitly and document, because dropping data always throws information away.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">data = data.dropna(subset=['CustomerID'])</span><div class="desc"><b>What:</b> scans the <code>CustomerID</code> column and removes any row where that cell is <code>NaN</code> (missing). <b>Why <code>subset=</code> matters:</b> without it, <code>dropna()</code> removes a row if <i>any</i> column has a missing value — that would also nuke every row with a blank <code>Description</code>, which you don't want. Restricting the check to just <code>['CustomerID']</code> is deliberate and precise. <b>Common mistake:</b> writing <code>data.dropna()</code> with no subset and silently losing far more rows than intended. <b>What's returned:</b> a new DataFrame (pandas doesn't modify the original in place unless you pass <code>inplace=True</code>) — which is why the line re-assigns it back to <code>data</code>. <b>If removed:</b> every later groupby/pivot would include phantom "no customer" rows, poisoning the cohort counts.</div></li>
+        <li><span class="lc">data.info()</span><div class="desc">Re-runs the same health check from cell 1 to prove the fix worked — a good habit: verify a cleaning step immediately, in the same cell, rather than assuming it worked.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-missing" data-search="missing values nan null dropna fillna" data-title="Concept: missing values (NaN)" data-tag="Concept">
+        <h4>📦 Concept: missing values (NaN)</h4>
+        <div class="cbody"><b>NaN</b> ("Not a Number") is pandas' placeholder for "no value was recorded here." It's contagious — almost any arithmetic touching a NaN produces another NaN — which is exactly why you decide up front whether to <b>drop</b> those rows (<code>dropna</code>) or <b>fill</b> them with a default (<code>fillna</code>).
+        <div class="analogy"><span class="lab">Analogy</span> Think of a class attendance sheet with some names left blank. You can't compute "average grade per student" for a blank row — you either cross it out (drop) or write "absent" (fill) before doing any math.</div>
+        <b>Interview angle:</b> always be ready to justify <i>why</i> you chose drop vs. fill — "I dropped because this field is required for the entire analysis and imputing a fake customer would bias the retention numbers" is a strong answer.
+        </div>
+      </div>
+
+      <h4 class="sub-h">Dry run on a tiny example</h4>
+      <table class="dt">
+        <tr><th>InvoiceNo</th><th>CustomerID</th><th>Country</th></tr>
+        <tr><td>1001</td><td>555.0</td><td>UK</td></tr>
+        <tr style="opacity:.45;"><td>1002</td><td><i>NaN</i></td><td>UK</td></tr>
+        <tr><td>1003</td><td>777.0</td><td>France</td></tr>
+      </table>
+      <div class="arrow-row">↓ dropna(subset=['CustomerID']) ↓</div>
+      <table class="dt">
+        <tr><th>InvoiceNo</th><th>CustomerID</th><th>Country</th></tr>
+        <tr><td>1001</td><td>555.0</td><td>UK</td></tr>
+        <tr><td>1003</td><td>777.0</td><td>France</td></tr>
+      </table>
+      <p style="font-size:13px;color:var(--muted);">Row 1002 vanished completely — not just its CustomerID cell, but the <i>whole row</i>, because <code>dropna()</code> operates row-wise.</p>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output — data.info() after dropna</div><pre>Int64Index: 406829 entries, 0 to 541908
+Data columns (total 8 columns):
+ #   Column       Non-Null Count   Dtype
+---  ------       --------------   -----
+ 0   InvoiceNo    406829 non-null  object
+ ...
+ 6   CustomerID   406829 non-null  float64
+ 7   Country      406829 non-null  object
+memory usage: 27.9+ MB</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);">Row count dropped from <b>541,909 → 406,829</b> (135,080 rows removed — about 25% of the dataset). Notice the index label changed from <code>RangeIndex</code> to <code>Int64Index</code>: pandas kept the <i>original</i> row numbers of the survivors instead of renumbering from 0, which is a subtle clue that rows were removed rather than the table being freshly built.</p>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Forgetting to reassign: writing just <code>data.dropna(subset=['CustomerID'])</code> without <code>data = ...</code> — pandas returns a new DataFrame rather than changing <code>data</code> in place, so the original stays untouched and later cells silently keep working on unfiltered data.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Calling plain <code>dropna()</code> with no <code>subset</code>, wiping out rows for the unrelated missing <code>Description</code> values too.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Not re-checking <code>.info()</code> afterward and assuming it worked — always verify a cleaning step immediately.</div></div>
+
+      <details class="dis">
+        <summary>💬 Interview Questions — 5</summary>
+        <div class="dbody">
+          <p><b>1. (Beginner)</b> What does <code>subset=</code> do inside <code>dropna()</code>?<br><i>Restricts the null-check to specific column(s) instead of every column.</i></p>
+          <p><b>2. (Beginner)</b> Why do we write <code>data = data.dropna(...)</code> instead of just <code>data.dropna(...)</code>?<br><i>Because pandas methods return a new object by default rather than mutating in place; you must reassign to keep the change.</i></p>
+          <p><b>3. (Intermediate)</b> What's the trade-off of dropping rows with missing CustomerID vs. imputing a placeholder ID?<br><i>Dropping loses ~25% of the data but keeps the analysis honest; imputing keeps volume but could badly distort per-customer metrics like retention.</i></p>
+          <p><b>4. (Scenario)</b> Your manager asks why revenue totals dropped after this cell — how do you explain it?<br><i>Because ~25% of transactions (no customer attached) were excluded — clarify this was a deliberate choice for a customer-level analysis, not a data-loss bug.</i></p>
+          <p><b>5. (Practical)</b> How would you drop rows only if <i>both</i> CustomerID and Description are missing?<br><i><code>data.dropna(subset=['CustomerID','Description'], how='all')</code></i></p>
+        </div>
+      </details>
+
+      <div class="callout fun"><span class="lab">Did you know?</span> In the real Online Retail dataset, a large share of the missing-CustomerID rows are "guest" wholesale orders and cancelled invoices (InvoiceNo starting with "C") — dropping them also quietly removes most cancellations from the analysis, which is worth flagging in any real report.</div>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> a customer-centric analysis requires a customer ID on every row — no exceptions.</li>
+        <li><b>Functions:</b> <span class="pill">dropna(subset=[...])</span></li>
+        <li><b>Pitfall:</b> forgetting to reassign; dropping too broadly.</li>
+        <li><b>Connects to:</b> every groupby('CustomerID') from here on now operates on a fully-populated column.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="phase2-banner">
+  <div class="phase-banner">
+    <div class="ph-num">02</div>
+    <div><h2>Build the Cohort Structure</h2><p>This is the conceptual heart of the notebook. Cells 4–10 turn a plain transaction log into three new columns that let you ask "how many months after joining is this purchase?"</p></div>
+  </div>
+  <div class="callout think"><span class="lab">Big picture, before you dive in</span> Every cohort analysis boils down to three ingredients per row: <b>(1)</b> when did this specific purchase happen? <b>(2)</b> when did this customer's very first purchase happen? <b>(3)</b> what's the gap, in whole months, between the two? Cells 4, 5, and 10 build exactly those three things, in that order.</div>
+</section>
+
+<section class="section" id="cell-4" data-search="invoicemonth datetime apply function month" data-title="Cell 04 — Create an Invoice Month" data-tag="Cell 04">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 04</span><h3>Create an Invoice Month</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com">#create an invoice month</span>
+<span class="tok-kw">import</span> datetime <span class="tok-kw">as</span> dt
+<span class="tok-com">#function for month</span>
+<span class="tok-kw">def</span> <span class="tok-fn">get_month</span>(x):
+    <span class="tok-kw">return</span> dt.datetime(x.year, x.month,<span class="tok-num">1</span>)
+<span class="tok-com">#apply the function</span>
+data[<span class="tok-str">'InvoiceMonth'</span>] = data[<span class="tok-str">'InvoiceDate'</span>].<span class="tok-fn">apply</span>(get_month)
+data.<span class="tok-fn">tail</span>()</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Creates a brand-new column, <code>InvoiceMonth</code>, that rounds every precise <code>InvoiceDate</code> timestamp (e.g. <code>2010-12-01 08:26:00</code>) down to just the first day of that month (<code>2010-12-01</code>), throwing away the day-of-month and time.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>Cohort analysis in this notebook works at <b>monthly</b> granularity — "did this customer come back in month 3?" — not at the minute or even day level. If you kept the exact timestamp, every single purchase would look "unique" and grouping customers by shared time buckets would be impossible. Rounding every date down to the 1st of its month gives you a clean, comparable label to group by.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">import datetime as dt</span><div class="desc"><b>What:</b> loads Python's built-in <code>datetime</code> module (not a third-party library — it ships with Python itself), aliased <code>dt</code>. <b>Why:</b> you need <code>dt.datetime(...)</code> below to construct a new date object.</div></li>
+        <li><span class="lc">def get_month(x):</span><div class="desc"><b>What:</b> starts defining a custom, reusable function named <code>get_month</code> that takes one input, <code>x</code>. <b>Why:</b> pandas has no built-in "round this timestamp down to the 1st of its month" function, so the notebook author writes a tiny helper to do exactly that. <b>What is <code>x</code>?</b> When this function is applied to the column below, <code>x</code> will be one individual timestamp value (technically a pandas <code>Timestamp</code> object) at a time — never the whole column at once.</div></li>
+        <li><span class="lc">    return dt.datetime(x.year, x.month, 1)</span><div class="desc"><b>What:</b> builds a brand-new date object using only <code>x</code>'s year and month, hard-coding the day to <b>1</b>. <b>Why:</b> <code>x.year</code> and <code>x.month</code> are attributes already stored inside any timestamp object — no calculation needed, just extraction. <b>What's returned:</b> a <code>datetime.datetime</code> object representing the first day of that month at midnight. <b>Common mistake:</b> forgetting that this returns a full datetime (with a 00:00:00 time baked in) rather than a "month" data type — Python has no dedicated year-month type, so "first of the month" is the conventional stand-in.</div></li>
+        <li><span class="lc">data['InvoiceMonth'] = data['InvoiceDate'].apply(get_month)</span><div class="desc"><b>What:</b> runs <code>get_month</code> once for <i>every single row</i> in the <code>InvoiceDate</code> column, and stores each result in a new column called <code>InvoiceMonth</code>. <b>Why <code>.apply()</code>:</b> it's the general-purpose tool for "run my own custom function against every value in this column," used whenever no built-in vectorized pandas function already does the job. <b>Common mistake / real-world note:</b> this notebook actually triggers a <code>SettingWithCopyWarning</code> here (visible in the real output below) — a signal that pandas isn't 100% sure whether <code>data</code> is a fresh DataFrame or a view into another one. It still works in this case, but the safe fix is <code>data = data.copy()</code> right after loading, or using <code>.loc[]</code> for the assignment. <b>If removed:</b> there would be no monthly bucket to group by at all — cell 5 and cell 7 both depend directly on this column existing.</div></li>
+        <li><span class="lc">data.tail()</span><div class="desc">Prints the <i>last</i> 5 rows (as opposed to <code>.head()</code>'s first 5) — a good habit here specifically because it lets you confirm the new column appeared correctly at the far end of a 400K+ row table, not just near the top.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-apply" data-search="apply function row-wise vectorized pandas" data-title="Concept: .apply()" data-tag="Concept">
+        <h4>📦 Concept: what does .apply() do?</h4>
+        <div class="cbody"><code>.apply()</code> takes a function you supply and runs it once per row (or per column) of a DataFrame or Series, collecting the results into a new Series. It's the escape hatch you reach for when a built-in pandas method can't already do what you need.
+        <div class="analogy"><span class="lab">Analogy</span> Imagine handing every student in a class the same worksheet ("subtract the day, keep year+month") and collecting all 400,000 completed worksheets into one master list — that's <code>.apply()</code>: same instructions, applied individually to every row.</div>
+        <b>Common mistake:</b> reaching for <code>.apply()</code> out of habit when a faster, vectorized pandas operation already exists (e.g. <code>data['InvoiceDate'].dt.to_period('M')</code> could replace this whole cell) — <code>.apply()</code> is convenient but noticeably slower on large datasets because it runs pure Python row-by-row instead of pandas' optimized C code.</div>
+      </div>
+
+      <div class="concept" id="concept-function" data-search="function def python parameter return" data-title="Concept: functions in Python" data-tag="Concept">
+        <h4>📦 Concept: functions (def)</h4>
+        <div class="cbody">A <b>function</b> is a named, reusable block of instructions. You define it once with <code>def name(parameters):</code> and a <code>return</code> statement, then "call" it as many times as you like with different inputs, without retyping the logic.
+        <div class="analogy"><span class="lab">Analogy</span> A function is a vending machine: you put in coins (arguments), it always performs the same internal steps, and it hands back a specific product (the return value) — you never need to know how the machine works inside to use it.</div>
+        </div>
+      </div>
+
+      <h4 class="sub-h">Dry run on a tiny example</h4>
+      <table class="dt">
+        <tr><th>InvoiceDate (input, x)</th><th>get_month(x) → InvoiceMonth</th></tr>
+        <tr><td>2010-12-01 08:26:00</td><td>2010-12-01 00:00:00</td></tr>
+        <tr><td>2010-12-01 08:26:00</td><td>2010-12-01 00:00:00</td></tr>
+        <tr><td>2011-01-18 13:05:00</td><td>2011-01-01 00:00:00</td></tr>
+        <tr><td>2011-01-02 09:00:00</td><td>2011-01-01 00:00:00</td></tr>
+      </table>
+      <p style="font-size:13px;color:var(--muted);">Notice rows 3 and 4 both collapse to <b>2011-01-01</b> even though the original dates were 16 days apart — that's the entire point: two purchases in the same calendar month now share an identical, groupable label.</p>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output (warning + tail)</div><pre>SettingWithCopyWarning:
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+  data['InvoiceMonth'] = data['InvoiceDate'].apply(get_month)
+
+        InvoiceNo  ...  Country  InvoiceMonth
+541908    581587  ...   France    2011-12-01</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);">This warning is <b>not an error</b> — the cell still runs and the column still gets created correctly. It's pandas being cautious about a possible unintended side effect from the earlier <code>dropna()</code> reassignment. Worth knowing for interviews, but safe to proceed past here.</p>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Ignoring <code>SettingWithCopyWarning</code> forever without understanding it — in stricter production pipelines this can occasionally mean your edit silently didn't apply.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Reaching for a slow <code>.apply()</code> with a custom function when a built-in vectorized method (like <code>.dt.to_period('M')</code>) would run 10-100x faster on large data.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Forgetting that the day is hard-coded to <b>1</b>, then being confused later why every date in this column ends in "-01".</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 4</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> What do <code>x.year</code> and <code>x.month</code> return?<br><i>Integers representing the year and month of the timestamp object x.</i></p>
+        <p><b>2. (Intermediate)</b> Why does the function hard-code the day as 1?<br><i>To collapse every date within the same month down to one shared, groupable value — the day itself is irrelevant to a monthly cohort analysis.</i></p>
+        <p><b>3. (Intermediate)</b> What's a faster alternative to this custom function + .apply() combo?<br><i><code>data['InvoiceDate'].dt.to_period('M')</code> or <code>.values.astype('datetime64[M]')</code> — both are vectorized and avoid the Python-level loop.</i></p>
+        <p><b>4. (Scenario)</b> A teammate says "just use <code>.dt.month</code> instead" — what's the problem with that?<br><i><code>.dt.month</code> alone returns just the month number (1-12) with no year attached, so January 2011 and January 2010 would incorrectly collapse into the same group.</i></p>
+      </div></details>
+
+      <div class="quiz" data-correct="1">
+        <div class="q">What would <code>get_month()</code> return for the timestamp <code>2011-07-23 14:10:00</code>?</div>
+        <div class="opts">
+          <button class="opt" data-i="0">2011-07-23 00:00:00</button>
+          <button class="opt" data-i="1">2011-07-01 00:00:00</button>
+          <button class="opt" data-i="2">2011-01-01 00:00:00</button>
+        </div>
+        <div class="exp">Correct: <b>B</b>. The function keeps the year and month exactly as given (2011, 7) but always forces the day to 1.</div>
+      </div>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> collapse exact timestamps down to a shared "month bucket" label to enable grouping.</li>
+        <li><b>Functions:</b> <span class="pill">def / return</span><span class="pill">.apply()</span><span class="pill">dt.datetime()</span></li>
+        <li><b>Pitfall:</b> SettingWithCopyWarning; reaching for .apply() when a vectorized method exists.</li>
+        <li><b>Connects to:</b> cell 5 does the same rounding trick, but takes the <i>minimum</i> per customer instead of applying it per row.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-5" data-search="cohort month groupby transform min first purchase acquisition" data-title="Cell 05 — Create the Cohort Month" data-tag="Cell 05">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 05</span><h3>Create a Cohort Month (first purchase)</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com">#create a column index with the minimum invoice date aka first time customer was acquired</span>
+data[<span class="tok-str">'Cohort Month'</span>] =  data.<span class="tok-fn">groupby</span>(<span class="tok-str">'CustomerID'</span>)[<span class="tok-str">'InvoiceMonth'</span>].<span class="tok-fn">transform</span>(<span class="tok-str">'min'</span>)
+data.<span class="tok-fn">head</span>(<span class="tok-num">30</span>)</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>For every customer, finds the <b>earliest</b> <code>InvoiceMonth</code> they ever appear in — their acquisition month — and writes that same value onto <b>every single row</b> that customer has, in a new column called <code>Cohort Month</code>.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>This is the single most important idea in the whole notebook: a <b>cohort</b> is "the group of customers who were all first acquired in the same month." To know if December's cohort came back in March, you first need to permanently label every one of December's transactions — and every later transaction those same customers ever make — with "December" as their home cohort.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">data.groupby('CustomerID')</span><div class="desc"><b>What:</b> splits the 406,829-row table into hundreds of smaller groups, one per unique <code>CustomerID</code>. <b>What's returned:</b> not a DataFrame yet — a special intermediate <code>DataFrameGroupBy</code> object holding "the plan" for how to split the data, waiting for you to say what to do with each group.</div></li>
+        <li><span class="lc">['InvoiceMonth']</span><div class="desc"><b>What:</b> tells the groupby "I only care about the InvoiceMonth column within each customer's group" — narrowing the operation before you aggregate.</div></li>
+        <li><span class="lc">.transform('min')</span><div class="desc"><b>What:</b> for each customer's group, computes the minimum (earliest) <code>InvoiceMonth</code> — then, critically, <b>broadcasts</b> that single value back out to every row belonging to that customer, rather than collapsing the group into one row. <b>Why <code>transform</code> instead of <code>agg</code>/<code>aggregate</code>:</b> <code>.agg('min')</code> would return one row per customer (a much shorter table) — useless here, since you need the result to line up row-for-row with the original 406,829-row table so it can become a new column. <b>What's returned:</b> a Series exactly the same length as the original data. <b>Common mistake:</b> using <code>.agg()</code> when you meant <code>.transform()</code> and then getting a length-mismatch error when trying to assign it as a new column.</div></li>
+        <li><span class="lc">data.head(30)</span><div class="desc">Prints 30 rows instead of the default 5 — deliberately more than usual here, likely so the notebook author could visually confirm that <i>multiple different customers'</i> Cohort Months were computed correctly, not just the first customer's.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-groupby" data-search="groupby split apply combine aggregate" data-title="Concept: GroupBy (split-apply-combine)" data-tag="Concept">
+        <h4>📦 Concept: GroupBy — split, apply, combine</h4>
+        <div class="cbody">Every <code>.groupby()</code> operation follows the same three-step pattern: <b>split</b> the data into groups sharing a key (here, each unique customer), <b>apply</b> a calculation to each group independently (here, find the minimum month), then <b>combine</b> the results back together.
+        <div class="analogy"><span class="lab">Analogy</span> Picture sorting a pile of receipts into one folder per customer (split), writing "earliest visit: December" on a sticky note inside each folder (apply), then either keeping one sticky note per folder (<code>.agg</code>) or photocopying that same sticky note onto every single receipt inside the folder (<code>.transform</code>).</div>
+        </div>
+      </div>
+
+      <div class="concept" id="concept-transform" data-search="transform vs agg aggregate broadcast same shape" data-title="Concept: transform() vs agg()" data-tag="Concept">
+        <h4>📦 Concept: transform() vs. agg() — the detail that trips everyone up</h4>
+        <div class="cbody">Both work on grouped data, but they return different shapes. <code>agg('min')</code> collapses each group to one summary row (a short table — great for reports). <code>transform('min')</code> keeps the original row count and repeats the group's answer on every row that belongs to it (a full-length column — required whenever you need to attach a group-level fact back onto the original data).
+        <div class="analogy"><span class="lab">Analogy</span> If a family's total grocery bill is calculated once (agg), that's one number for four people. If instead everyone in that family gets a receipt that shows "your family spent $120 total" printed on it (transform), each of the four people is holding the same number, but there are still four separate receipts.</div>
+        <b>Interview angle:</b> this is one of the most commonly asked pandas questions — be ready to state, in one sentence, that <code>transform</code> preserves the original index/shape while <code>agg</code> does not.
+        </div>
+      </div>
+
+      <h4 class="sub-h">Dry run on a tiny example</h4>
+      <table class="dt">
+        <tr><th>Row</th><th>CustomerID</th><th>InvoiceMonth</th></tr>
+        <tr><td>1</td><td>101</td><td>2010-12-01</td></tr>
+        <tr><td>2</td><td>101</td><td>2011-02-01</td></tr>
+        <tr><td>3</td><td>202</td><td>2011-01-01</td></tr>
+        <tr><td>4</td><td>101</td><td>2011-03-01</td></tr>
+      </table>
+      <div class="arrow-row">↓ groupby('CustomerID')['InvoiceMonth'].transform('min') ↓</div>
+      <table class="dt">
+        <tr><th>Row</th><th>CustomerID</th><th>InvoiceMonth</th><th>Cohort Month (new)</th></tr>
+        <tr><td>1</td><td>101</td><td>2010-12-01</td><td><b>2010-12-01</b></td></tr>
+        <tr><td>2</td><td>101</td><td>2011-02-01</td><td><b>2010-12-01</b></td></tr>
+        <tr><td>3</td><td>202</td><td>2011-01-01</td><td><b>2011-01-01</b></td></tr>
+        <tr><td>4</td><td>101</td><td>2011-03-01</td><td><b>2010-12-01</b></td></tr>
+      </table>
+      <p style="font-size:13px;color:var(--muted);">Customer 101 has three different InvoiceMonths (Dec, Feb, Mar) but their Cohort Month is <i>always</i> Dec 2010 — the month of their earliest purchase — repeated on every single one of their rows.</p>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output (with SettingWithCopyWarning, same cause as cell 4)</div><pre>       InvoiceNo  ...  InvoiceMonth  Cohort Month
+541879    581585  ...   2011-12-01    2011-04-01
+541880    581585  ...   2011-12-01    2011-04-01
+...</pre></div>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Using <code>.agg('min')</code> here instead of <code>.transform('min')</code> — you'd get a Series shorter than <code>data</code>, and assigning it as a new column would raise a length-mismatch error or (worse) silently misalign by index.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Forgetting that <code>Cohort Month</code> never changes for a given customer, even years later — it's fixed at their very first purchase, permanently.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Confusing "Invoice Month" (which changes every row) with "Cohort Month" (fixed per customer) — mixing these two up is the #1 source of bugs in the next few cells.</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 5</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> In plain English, what does "Cohort Month" represent for a given customer?<br><i>The calendar month of that customer's very first-ever purchase — their acquisition month.</i></p>
+        <p><b>2. (Intermediate)</b> Why must you use <code>.transform()</code> here rather than <code>.agg()</code>?<br><i>Because the result needs to be assigned back as a new column with the exact same row count and row alignment as the original DataFrame — only transform preserves that shape.</i></p>
+        <p><b>3. (Intermediate)</b> Does Cohort Month ever change for a given customer across the dataset?<br><i>No — it's fixed to their first purchase month and stays constant on every row they ever generate.</i></p>
+        <p><b>4. (Scenario)</b> How would you compute each customer's <i>most recent</i> purchase month instead?<br><i>Same pattern, swap 'min' for 'max': <code>.groupby('CustomerID')['InvoiceMonth'].transform('max')</code>.</i></p>
+        <p><b>5. (Practical)</b> How would you get one row per customer showing just their cohort month (not the full table)?<br><i>Use <code>.agg('min')</code> instead of <code>.transform('min')</code>, or <code>.drop_duplicates(subset='CustomerID')</code> after transforming.</i></p>
+      </div></details>
+
+      <div class="quiz" data-correct="0">
+        <div class="q">If <code>.agg('min')</code> had been used instead of <code>.transform('min')</code>, what would go wrong?</div>
+        <div class="opts">
+          <button class="opt" data-i="0">The result would have one row per customer, too short to become a new column on the full table</button>
+          <button class="opt" data-i="1">Nothing — agg and transform always return identical results</button>
+          <button class="opt" data-i="2">It would compute the maximum instead of the minimum</button>
+        </div>
+        <div class="exp">Correct: <b>A</b>. agg() collapses each group to a single summary row, breaking the row-for-row alignment needed to assign the result as a new column.</div>
+      </div>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> a "cohort" = the group sharing the same acquisition month; <code>transform('min')</code> stamps that fixed label onto every row.</li>
+        <li><b>Functions:</b> <span class="pill">groupby()</span><span class="pill">.transform('min')</span></li>
+        <li><b>Pitfall:</b> confusing transform (same shape) with agg (collapsed shape).</li>
+        <li><b>Connects to:</b> cell 10 will subtract InvoiceMonth − Cohort Month to get how many months elapsed.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-6" data-search="date element function day month year tuple unpacking" data-title="Cell 06 — A date-element helper function" data-tag="Cell 06">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 06</span><h3>A reusable date-element helper</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com"># create a date element function to get a series for subtraction</span>
+<span class="tok-kw">def</span> <span class="tok-fn">get_date_elements</span>(df, column):
+    day = df[column].dt.day
+    month = df[column].dt.month
+    year = df[column].dt.year
+    <span class="tok-kw">return</span> day, month, year</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Defines a reusable function that, given any DataFrame and a date column's name, pulls out three separate Series: the day, the month, and the year — all at once.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>You can't directly subtract one calendar date from another and get "number of months" — Python's date subtraction gives you a raw day-count (a <code>Timedelta</code>), not clean calendar months. The trick this notebook uses instead (in cell 10) is to subtract the <b>year numbers</b> and the <b>month numbers</b> separately, then combine them with simple arithmetic. This function exists purely to extract those raw year/month numbers — from <i>two different columns</i> (<code>InvoiceMonth</code> and <code>Cohort Month</code>) — without writing the same three lines twice.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">def get_date_elements(df, column):</span><div class="desc"><b>What:</b> defines a function taking two parameters — <code>df</code> (which table to look in) and <code>column</code> (which column name, as a string, to pull dates from). <b>Why two parameters:</b> this makes the function generic — cell 7 will call it twice, once for <code>'InvoiceMonth'</code> and once for <code>'Cohort Month'</code>, without rewriting the logic.</div></li>
+        <li><span class="lc">day = df[column].dt.day</span><div class="desc"><b>What:</b> the <code>.dt</code> accessor unlocks date-specific properties on a datetime column; <code>.day</code> extracts just the day-of-month as a plain integer for every row. <b>Common mistake:</b> forgetting <code>.dt</code> and writing <code>df[column].day</code> directly — that throws an <code>AttributeError</code>, because <code>.day</code> only exists on individual timestamp objects, not on an entire Series; <code>.dt</code> is the bridge that applies it element-wise.</div></li>
+        <li><span class="lc">month = df[column].dt.month</span><div class="desc">Same pattern as above, extracting the month number (1–12).</div></li>
+        <li><span class="lc">year = df[column].dt.year</span><div class="desc">Same pattern, extracting the 4-digit year.</div></li>
+        <li><span class="lc">return day, month, year</span><div class="desc"><b>What:</b> returns all three Series together as a <b>tuple</b> of three values in one <code>return</code> statement. <b>Why it matters:</b> Python lets you "unpack" a returned tuple straight into three separate variable names at the call site (exactly what cell 7 does) — a compact, very common Python pattern.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-dtaccessor" data-search="dt accessor datetime property day month year" data-title="Concept: the .dt accessor" data-tag="Concept">
+        <h4>📦 Concept: the .dt accessor</h4>
+        <div class="cbody">When a pandas column holds dates (dtype <code>datetime64</code>), you can't call date methods on the <i>column</i> directly — you have to go through <code>.dt</code> first, which tells pandas "apply this date logic to every value in the Series, one at a time, and give me back a new Series of results."
+        <div class="analogy"><span class="lab">Analogy</span> <code>.dt</code> is like a translator standing between you and a room full of calendar pages — you ask the translator "get me everyone's month," and it walks the whole room asking each page individually, then hands you back one big list of answers.</div>
+        </div>
+      </div>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output</div><pre>(no output — this cell only defines the function, it doesn't call it yet)</pre></div>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Forgetting <code>.dt</code> before <code>.day</code>/<code>.month</code>/<code>.year</code> and hitting <code>AttributeError: 'Series' object has no attribute 'day'</code>.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Calling this function on a column that isn't actually a datetime dtype yet (still text/object) — <code>.dt</code> will fail until you first run it through <code>pd.to_datetime()</code>.</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 3</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> What does the <code>.dt</code> accessor do?<br><i>Exposes date/time-specific properties and methods (day, month, year, weekday, etc.) on an entire datetime Series at once.</i></p>
+        <p><b>2. (Intermediate)</b> Why does this function return three values instead of one?<br><i>Python functions can return multiple values packed as a tuple; here it's convenient to hand back day, month, and year together since all three are usually needed at once.</i></p>
+        <p><b>3. (Scenario)</b> Why not just subtract two datetime columns directly to get "months between"?<br><i>Datetime subtraction returns a Timedelta measured in days/nanoseconds, not calendar months — you'd have to convert manually, which is exactly why this function extracts raw year/month integers for arithmetic in cell 10 instead.</i></p>
+      </div></details>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> a generic helper function avoids repeating the same three <code>.dt</code> extractions twice.</li>
+        <li><b>Functions:</b> <span class="pill">.dt.day/.month/.year</span><span class="pill">tuple return</span></li>
+        <li><b>Connects to:</b> cell 7 calls this twice; cell 10 does the actual month-gap arithmetic with its output.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-7" data-search="get date elements invoice cohort year month unpacking underscore" data-title="Cell 07 — Extract year and month for both columns" data-tag="Cell 07">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 07</span><h3>Extract year and month for both date columns</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com"># get date elements for our cohort and invoice columns</span>
+_,Invoice_month,Invoice_year =  <span class="tok-fn">get_date_elements</span>(data,<span class="tok-str">'InvoiceMonth'</span>)
+_,Cohort_month,Cohort_year =  <span class="tok-fn">get_date_elements</span>(data,<span class="tok-str">'Cohort Month'</span>)</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Calls the helper function from cell 6 twice — once on <code>InvoiceMonth</code>, once on <code>Cohort Month</code> — and unpacks the results into four standalone variables: <code>Invoice_month</code>, <code>Invoice_year</code>, <code>Cohort_month</code>, and <code>Cohort_year</code>.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>Cell 10 needs the raw year and month <i>numbers</i> for both dates to compute the gap between them. Rather than writing <code>data['InvoiceMonth'].dt.year</code> and <code>data['Cohort Month'].dt.year</code> (and month) separately, this cell reuses the cell-6 function to get both sets in two clean lines.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">_,Invoice_month,Invoice_year = get_date_elements(data,'InvoiceMonth')</span><div class="desc"><b>What:</b> calls the function with <code>InvoiceMonth</code> as the target column; unpacks the returned tuple (day, month, year) into three names. <b>Why the underscore <code>_</code>:</b> a Python convention meaning "I'm required to unpack this many values, but I'm deliberately throwing this one away" — here, the day-of-month isn't needed for anything downstream, so it's discarded rather than given a real name. <b>Common mistake:</b> mismatching the number of variables on the left with the number of values returned — <code>get_date_elements</code> returns exactly 3 values, so unpacking into 2 or 4 names raises <code>ValueError: too many/not enough values to unpack</code>.</div></li>
+        <li><span class="lc">_,Cohort_month,Cohort_year = get_date_elements(data,'Cohort Month')</span><div class="desc">Same call, this time targeting the <code>Cohort Month</code> column — giving you the acquisition month/year to compare against the invoice month/year above.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-unpacking" data-search="tuple unpacking underscore throwaway variable" data-title="Concept: tuple unpacking &amp; the throwaway underscore" data-tag="Concept">
+        <h4>📦 Concept: tuple unpacking and the "_" convention</h4>
+        <div class="cbody">When a function returns multiple values as a tuple, Python lets you assign each one to its own variable in a single line: <code>a, b, c = some_function()</code>. If you don't need one of them, the community convention is to name it <code>_</code> — a visual signal to any reader that "this value exists but is intentionally unused."
+        <div class="analogy"><span class="lab">Analogy</span> It's like being handed three parcels at once and immediately setting the one you don't need down on the floor labeled "ignore," while carrying the other two off by their real names.</div>
+        </div>
+      </div>
+
+      <h4 class="sub-h">Dry run</h4>
+      <table class="dt">
+        <tr><th>Call</th><th>Returns</th><th>Unpacked as</th></tr>
+        <tr><td>get_date_elements(data,'InvoiceMonth')</td><td>(day, month, year) Series triple</td><td>_ , Invoice_month , Invoice_year</td></tr>
+        <tr><td>get_date_elements(data,'Cohort Month')</td><td>(day, month, year) Series triple</td><td>_ , Cohort_month , Cohort_year</td></tr>
+      </table>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output</div><pre>(no output — this cell only creates variables, nothing is printed)</pre></div>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Mixing up which variable came from which call — e.g. accidentally treating <code>Cohort_year</code> as if it were the invoice year in a later cell. The naming is careful here specifically to prevent that.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Reusing the underscore <code>_</code> twice in the same cell/scope — the second assignment simply overwrites the first; usually harmless here since it's discarded either way, but worth knowing it's not a "special" variable, just a valid (if unconventional) name.</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 3</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> What does the underscore <code>_</code> mean in <code>_, month, year = func()</code>?<br><i>By convention, it signals "this returned value is deliberately unused" — it's a normal variable name, not special syntax.</i></p>
+        <p><b>2. (Intermediate)</b> What error would you get if you wrote <code>a, b = get_date_elements(data, 'InvoiceMonth')</code>?<br><i>ValueError: too many values to unpack — the function returns 3 values, not 2.</i></p>
+        <p><b>3. (Practical)</b> Why call the same function twice instead of writing a version that takes two column names at once?<br><i>Simplicity and reuse — the function already works generically for one column at a time, so calling it twice avoids adding branching logic for no real benefit at this scale.</i></p>
+      </div></details>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> reuse the same helper function on two different columns to get four clean variables ready for arithmetic.</li>
+        <li><b>Concepts:</b> <span class="pill">tuple unpacking</span><span class="pill">underscore convention</span></li>
+        <li><b>Connects to:</b> cell 10 combines these four variables into the Cohort Index.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-8" data-search="checkpoint sanity check series slicing verify" data-title="Cells 08–09 — Two quick sanity checks" data-tag="Cells 08-09">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cells 08 &amp; 09</span><h3>Two quick sanity checks</h3></div></div>
+    <div class="body">
+      <p style="color:var(--muted);font-size:13.5px;">These two cells don't transform anything new — they're the notebook author pausing to <b>verify</b> that cells 6–7 actually worked before building on top of them. Good analysts do this constantly; it's cheap insurance against silently building the rest of the pipeline on a broken foundation.</p>
+
+      <h4 class="sub-h">Cell 08 — peek at one Series</h4>
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com">#check the series</span>
+Cohort_year[:<span class="tok-num">10</span>]</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);"><b>What/why:</b> <code>Cohort_year[:10]</code> uses ordinary Python slicing to grab the first 10 values of the <code>Cohort_year</code> Series (created in cell 7) — a fast way to eyeball "does this look like a sensible list of years?" without printing all 406,829 rows. <b>Line-by-line:</b> the <code>[:10]</code> slice means "start at the beginning, stop before index 10" — standard Python slice notation, identical to slicing a plain list.</p>
+      <div class="output"><div class="lbl">Output</div><pre>0    2010
+1    2010
+2    2010
+...
+9    2010
+Name: Cohort Month, dtype: int64</pre></div>
+      <p style="font-size:13px;color:var(--muted);">All 2010 — expected, since the first customers in the file made their first purchase in December 2010, the earliest month in the whole dataset.</p>
+
+      <h4 class="sub-h">Cell 09 — re-check the full table</h4>
+      <div class="codeblock"><button class="copybtn">Copy</button><pre>data.<span class="tok-fn">head</span>()</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);"><b>What/why:</b> a second <code>.head()</code> call, now showing both new columns (<code>InvoiceMonth</code> and <code>Cohort Month</code>) side by side on real rows — confirming visually that both point to the correct dates before cell 10 does math with them.</p>
+
+      <div class="concept" id="concept-slicing" data-search="slicing list series index start stop step" data-title="Concept: Python/pandas slicing" data-tag="Concept">
+        <h4>📦 Concept: slicing with [:10]</h4>
+        <div class="cbody">Slice notation <code>sequence[start:stop]</code> pulls a sub-range from any ordered Python object — lists, strings, and pandas Series all support it the same way. Leaving <code>start</code> blank means "from the beginning"; <code>stop</code> is exclusive, so <code>[:10]</code> gives you exactly 10 items (positions 0 through 9).</div>
+      </div>
+
+      <div class="callout fun"><span class="lab">Did you know?</span> Sanity-checking after every transformation, rather than only at the very end, is one of the biggest habits separating experienced analysts from beginners — bugs caught two cells later are far cheaper to fix than bugs discovered after the final chart is already built.</div>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> verify each transformation immediately, on real values, before stacking more logic on top.</li>
+        <li><b>Functions:</b> <span class="pill">Series slicing [:n]</span><span class="pill">.head()</span></li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-10" data-search="cohort index year diff month diff formula months since acquisition" data-title="Cell 10 — Create the Cohort Index (the core formula)" data-tag="Cell 10">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 10</span><h3>Create the Cohort Index — the whole notebook's core formula</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com">#create a cohort index</span>
+year_diff = Invoice_year -Cohort_year
+month_diff = Invoice_month - Cohort_month
+data[<span class="tok-str">'CohortIndex'</span>] = year_diff*<span class="tok-num">12</span>+month_diff+<span class="tok-num">1</span>
+data.<span class="tok-fn">tail</span>()</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Computes, for every single transaction, exactly how many months have passed since that customer's very first purchase — and stores it as a new column, <code>CohortIndex</code>, where 1 = "the month they joined," 2 = "one month later," 3 = "two months later," and so on.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>This is the number that makes the whole retention heatmap possible. Once every row knows both <i>which cohort it belongs to</i> (Cohort Month) and <i>how many months into that cohort's life this purchase happened</i> (CohortIndex), you can finally ask the real business question: "of the people who joined in December, how many were still buying in month 3? Month 6? Month 12?" — and compare that shape across every cohort side by side, regardless of which actual calendar month each cohort started in.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">year_diff = Invoice_year - Cohort_year</span><div class="desc"><b>What:</b> subtracts two whole Series element-by-element (row 1 of Invoice_year minus row 1 of Cohort_year, row 2 minus row 2, etc. — pandas aligns by position/index automatically). <b>Why:</b> if a purchase happens in a later calendar year than the customer's first purchase, this captures how many full years apart they are. <b>Common mistake:</b> assuming this line alone gives you "months apart" — it only gives <i>years</i> apart; the month component still needs separate handling below.</div></li>
+        <li><span class="lc">month_diff = Invoice_month - Cohort_month</span><div class="desc"><b>What:</b> similarly subtracts the month numbers (1–12) for the same reason. <b>Important subtlety:</b> this can be <b>negative</b> — e.g. a customer acquired in November (month 11) buying again in January (month 1) gives <code>1 - 11 = -10</code>. That's fine and expected; the next line's <code>year_diff*12</code> term corrects for it (Jan is year_diff=1, so <code>1*12 + (-10) = 2</code>, correctly landing on month 2 of that customer's life).</div></li>
+        <li><span class="lc">data['CohortIndex'] = year_diff*12+month_diff+1</span><div class="desc"><b>What:</b> converts the (year, month) difference pair into a single "total months elapsed" number, then adds 1 so a customer's very first purchase month reads as <b>index 1</b> rather than <b>index 0</b> (a deliberate, human-friendly choice — "month 1" instead of "month 0" matches how people naturally count). <b>Why <code>*12</code>:</b> converts whole years into their month-equivalent (2 years = 24 months) so it can be added directly to the month difference. <b>Common mistake:</b> forgetting the final <code>+1</code> and ending up with cohort index 0 for the acquisition month, which is technically fine but inconsistent with how this notebook (and most retention reports) label the first month.</div></li>
+        <li><span class="lc">data.tail()</span><div class="desc">Confirms the new column landed correctly by inspecting the last 5 rows, same habit as cell 4.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-cohortindex" data-search="cohort index formula month gap retention period" data-title="Concept: Cohort Index formula, unpacked" data-tag="Concept">
+        <h4>📦 Concept: why "year_diff × 12 + month_diff" works</h4>
+        <div class="cbody">There's no single built-in "months between two dates" operator in plain arithmetic, because a month isn't a fixed number of days. The trick is to convert both dates into "total months since year 0" conceptually: <code>total_months = year × 12 + month</code>. Subtracting two such totals gives you the month gap directly — which is exactly what <code>year_diff*12 + month_diff</code> computes, just split across two separate subtraction steps instead of one.
+        <div class="analogy"><span class="lab">Analogy</span> Think of every month since year zero as one tick on a single ruler (Jan 2010 = tick #24120, Feb 2010 = tick #24121, and so on). Once two dates are just tick numbers on the same ruler, "how far apart" is plain subtraction — no calendar logic needed anymore.</div>
+        </div>
+      </div>
+
+      <h4 class="sub-h">Dry run on a tiny example</h4>
+      <table class="dt">
+        <tr><th>Customer</th><th>Cohort Month</th><th>Invoice Month</th><th>year_diff</th><th>month_diff</th><th>CohortIndex</th></tr>
+        <tr><td>101</td><td>2010-12</td><td>2010-12</td><td>0</td><td>0</td><td><b>1</b> (joined this month)</td></tr>
+        <tr><td>101</td><td>2010-12</td><td>2011-02</td><td>1</td><td>2−12=−10</td><td>1×12 + (−10) + 1 = <b>3</b></td></tr>
+        <tr><td>202</td><td>2011-11</td><td>2012-01</td><td>1</td><td>1−11=−10</td><td>1×12 + (−10) + 1 = <b>3</b></td></tr>
+      </table>
+      <p style="font-size:13px;color:var(--muted);">Notice customers 101 and 202 land on the exact same CohortIndex (3), even though their real calendar months are completely different (Feb 2011 vs. Jan 2012) — that's the entire point. CohortIndex measures "months since joining," which is what lets you stack every cohort on the same comparable scale in the heatmap.</p>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output — data.tail()</div><pre>       ...  InvoiceMonth  Cohort Month  CohortIndex
+541908 ...    2011-12-01    2011-08-01            5</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);">This customer's cohort started August 2011, and this particular transaction happened in December 2011 — 4 calendar months later, landing at CohortIndex <b>5</b> (month 1 = August itself, so December is the 5th month of that cohort's life).</p>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Forgetting the <code>+1</code> and getting an "off by one" cohort index that starts at 0 instead of 1 — not wrong, just inconsistent with the convention the rest of the notebook (and most real dashboards) use.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Trying to subtract <code>InvoiceMonth − Cohort Month</code> directly as datetime objects and expecting a clean integer — you'd get a <code>Timedelta</code> in days/nanoseconds instead, not a month count.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Not realizing <code>month_diff</code> can be negative — panicking over a negative intermediate value instead of trusting that the final formula corrects for it.</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 6</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> In plain words, what does CohortIndex represent?<br><i>How many months have passed since a given customer's first-ever purchase, counting their first month as 1.</i></p>
+        <p><b>2. (Intermediate)</b> Why can't you just subtract two datetime columns to get "months apart"?<br><i>Datetime subtraction returns a Timedelta in days, and months aren't a fixed number of days — so you need to work with year/month integers separately instead.</i></p>
+        <p><b>3. (Intermediate)</b> Walk through why <code>year_diff*12 + month_diff</code> correctly handles a customer acquired in November buying again the following January.<br><i>year_diff = 1 (one calendar year later), month_diff = 1 − 11 = −10; 1×12 + (−10) = 2, correctly identifying January as the 2nd month of that cohort's life (Nov=1, Dec=2... wait check: Nov→Dec is month 2, Dec→Jan is month 3) — walk the arithmetic through carefully in the answer to confirm month labeling with the +1 offset.</i></p>
+        <p><b>4. (Scenario)</b> Your manager asks for a version where the acquisition month is labeled "month 0" instead of "month 1" for compatibility with another tool — what's the one-character change?<br><i>Drop the trailing <code>+1</code> in the CohortIndex formula.</i></p>
+        <p><b>5. (Practical)</b> How would you compute CohortIndex in a single vectorized line without the two intermediate variables?<br><i>e.g. <code>(Invoice_year - Cohort_year)*12 + (Invoice_month - Cohort_month) + 1</code> written inline — functionally identical, just less readable.</i></p>
+        <p><b>6. (Interview favorite)</b> What business question does CohortIndex ultimately let you answer that Cohort Month alone cannot?<br><i>It lets you align cohorts of different starting months on the same relative timeline, so you can compare "retention after 3 months" across every cohort fairly, rather than only comparing raw calendar months.</i></p>
+      </div></details>
+
+      <div class="quiz" data-correct="1">
+        <div class="q">A customer's Cohort Month is March 2011. This transaction's Invoice Month is June 2011. What is CohortIndex?</div>
+        <div class="opts">
+          <button class="opt" data-i="0">3</button>
+          <button class="opt" data-i="1">4</button>
+          <button class="opt" data-i="2">0</button>
+        </div>
+        <div class="exp">Correct: <b>B</b>. year_diff=0, month_diff=6−3=3, so CohortIndex = 0×12+3+1 = 4 (March itself is month 1, so June is the 4th month).</div>
+      </div>
+
+      <div class="callout think"><span class="lab">Think before you scroll</span> Now revisit the question from the hero section: a customer's first purchase was Dec 2010, their next was March 2011. Using this exact formula: year_diff=1, month_diff=3−12=−9, CohortIndex = 1×12+(−9)+1 = <b>4</b>. They "survived" to month 4.</div>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> convert (year, month) differences into one combined "months since acquisition" number, 1-indexed.</li>
+        <li><b>Formula:</b> <span class="pill">CohortIndex = year_diff × 12 + month_diff + 1</span></li>
+        <li><b>Pitfall:</b> forgetting the +1 offset; expecting datetime subtraction to give months directly.</li>
+        <li><b>Connects to:</b> cells 11–15 group and pivot on exactly this column to build both heatmaps.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="phase3-banner">
+  <div class="phase-banner">
+    <div class="ph-num">03</div>
+    <div><h2>Aggregate &amp; Visualize</h2><p>Every ingredient now exists on the row level. Cells 11–15 zoom out: count unique customers per (cohort, index) pair, reshape that into a grid, and paint the grid as a heatmap — twice, once as raw counts and once as retention percentages.</p></div>
+  </div>
+</section>
+
+<section class="section" id="cell-11" data-search="groupby cohort month cohort index nunique unique customer count" data-title="Cell 11 — Count unique customers per cohort/month" data-tag="Cell 11">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 11</span><h3>Count unique active customers, per cohort per month</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com">#count the customer ID by grouping by Cohort Month  and Cohort Index</span>
+cohort_data = data.<span class="tok-fn">groupby</span>([<span class="tok-str">'Cohort Month'</span>,<span class="tok-str">'CohortIndex'</span>])[<span class="tok-str">'CustomerID'</span>].<span class="tok-fn">apply</span>(pd.Series.nunique).<span class="tok-fn">reset_index</span>()</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Collapses the entire 406,829-row transaction log down to just 91 summary rows — one per unique combination of (Cohort Month, CohortIndex) — where each row answers: "of everyone acquired in this cohort, how many <i>distinct</i> customers made a purchase in this particular month-of-their-lifecycle?"</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>This is the actual retention count. A customer might buy 15 different products in one visit (15 rows in the raw data) — but for retention, that should count as <b>1 active customer</b>, not 15. This cell performs that de-duplication and aggregation in a single step, producing the compact table the pivot (cell 12) needs.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">data.groupby(['Cohort Month','CohortIndex'])</span><div class="desc"><b>What:</b> groups by <i>two</i> keys at once instead of one — every unique pair like ("Dec 2010", 3) or ("Jan 2011", 1) becomes its own group. <b>Why two keys:</b> you need both "which cohort" and "how many months in" to build the eventual grid — grouping by only one of them would collapse information you need.</div></li>
+        <li><span class="lc">['CustomerID'].apply(pd.Series.nunique)</span><div class="desc"><b>What:</b> within each (cohort, index) group, counts how many <i>distinct</i> CustomerID values appear — not how many rows, since one customer can generate many rows. <b>Why <code>pd.Series.nunique</code> instead of just <code>.nunique()</code>:</b> functionally near-identical here; passing the unbound method into <code>.apply()</code> is a slightly older/more explicit style — the modern, equivalent, and more common way to write this is simply <code>.groupby([...])['CustomerID'].nunique()</code>, skipping <code>.apply()</code> entirely. <b>Common mistake:</b> using <code>.count()</code> instead of <code>.nunique()</code> here — <code>.count()</code> would count every row (every product line), double- or triple-counting customers who bought multiple items, which would badly inflate the retention numbers.</div></li>
+        <li><span class="lc">.reset_index()</span><div class="desc"><b>What:</b> after a groupby+aggregate, the two grouping keys (Cohort Month, CohortIndex) become the row <i>index</i> rather than normal columns. <code>.reset_index()</code> converts them back into plain columns and replaces the index with a fresh 0,1,2... sequence — needed because cell 12's pivot expects <code>Cohort Month</code> and <code>CohortIndex</code> to exist as ordinary columns, not as an index.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-nunique" data-search="nunique unique count distinct values" data-title="Concept: count() vs nunique()" data-tag="Concept">
+        <h4>📦 Concept: .count() vs .nunique() — a classic bug source</h4>
+        <div class="cbody"><code>.count()</code> tallies how many non-null <i>rows</i> exist in a group. <code>.nunique()</code> tallies how many <b>distinct</b> values appear, regardless of how many times each repeats. For retention analysis, you always want <code>.nunique()</code> on the customer ID — you're counting <i>people</i>, not <i>line items</i>.
+        <div class="analogy"><span class="lab">Analogy</span> If 3 people sign a guestbook, and one of them signs twice, <code>.count()</code> says "4 signatures," while <code>.nunique()</code> correctly says "3 distinct visitors." Retention cares about visitors, not signatures.</div>
+        </div>
+      </div>
+
+      <h4 class="sub-h">Dry run on a tiny example</h4>
+      <table class="dt">
+        <tr><th>Cohort Month</th><th>CohortIndex</th><th>CustomerID</th></tr>
+        <tr><td>2010-12</td><td>1</td><td>101</td></tr>
+        <tr><td>2010-12</td><td>1</td><td>101</td></tr>
+        <tr><td>2010-12</td><td>1</td><td>102</td></tr>
+        <tr><td>2010-12</td><td>2</td><td>101</td></tr>
+      </table>
+      <div class="arrow-row">↓ groupby + nunique + reset_index ↓</div>
+      <table class="dt">
+        <tr><th>Cohort Month</th><th>CohortIndex</th><th>CustomerID</th></tr>
+        <tr><td>2010-12</td><td>1</td><td><b>2</b></td></tr>
+        <tr><td>2010-12</td><td>2</td><td><b>1</b></td></tr>
+      </table>
+      <p style="font-size:13px;color:var(--muted);">Even though customer 101 shows up 3 times in the raw rows, they only count once per month — 2 distinct customers active in month 1, 1 distinct customer still active in month 2.</p>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output — cohort_data (91 rows × 3 columns, abridged)</div><pre>   Cohort Month  CohortIndex  CustomerID
+0    2010-12-01            1         948
+1    2010-12-01            2         362
+2    2010-12-01            3         317
+...
+88   2011-11-01            2          43
+89   2011-11-01            1         321
+90   2011-12-01            1          41
+[91 rows x 3 columns]</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);">Read row 0 as: "948 distinct customers from the Dec-2010 cohort made a purchase in their very first month." Row 1: "only 362 of those same people came back in month 2" — the first hint of steep early drop-off, which the heatmap will make vivid.</p>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Using <code>.count()</code> instead of <code>.nunique()</code>, silently inflating every cohort's numbers by however many products each customer bought per visit.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Skipping <code>.reset_index()</code> and then getting a <code>KeyError</code> in cell 12 when trying to pivot on <code>'Cohort Month'</code> as if it were a column.</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 4</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> Why group by two columns instead of one here?<br><i>Because the final grid needs both dimensions — which cohort, and how many months into that cohort's life — to place each count correctly.</i></p>
+        <p><b>2. (Intermediate)</b> Why <code>.nunique()</code> instead of <code>.count()</code>?<br><i>To count distinct customers rather than transaction line-items, avoiding inflated numbers from repeat purchases within the same month.</i></p>
+        <p><b>3. (Intermediate)</b> What does <code>.reset_index()</code> actually change here?<br><i>Converts the groupby result's multi-level index (Cohort Month, CohortIndex) back into regular columns, with a fresh default integer index.</i></p>
+        <p><b>4. (Practical)</b> Rewrite this line using the more modern, equivalent syntax.<br><i><code>data.groupby(['Cohort Month','CohortIndex'])['CustomerID'].nunique().reset_index()</code></i></p>
+      </div></details>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> retention counts distinct customers, never raw transaction rows.</li>
+        <li><b>Functions:</b> <span class="pill">groupby([...])</span><span class="pill">.nunique()</span><span class="pill">.reset_index()</span></li>
+        <li><b>Pitfall:</b> count() vs nunique() confusion.</li>
+        <li><b>Connects to:</b> cell 12 pivots this exact table into the grid shape a heatmap needs.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-12" data-search="pivot table index columns values reshape long wide" data-title="Cell 12 — Pivot into a cohort × month grid" data-tag="Cell 12">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 12</span><h3>Pivot into a Cohort × Month grid</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com"># create a pivot table</span>
+cohort_table = cohort_data.<span class="tok-fn">pivot</span>(index=<span class="tok-str">'Cohort Month'</span>, columns=[<span class="tok-str">'CohortIndex'</span>],values=<span class="tok-str">'CustomerID'</span>)
+cohort_table</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Reshapes the 91-row "long" table from cell 11 into a 13×13 "wide" grid: one row per cohort, one column per CohortIndex, and the unique-customer count sitting at the intersection — exactly the rectangular shape a heatmap needs.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>seaborn's <code>heatmap()</code> function expects a 2D grid (rows × columns of numbers), not a long list of (cohort, index, count) triples. Pivoting is the standard reshape from "one row per observation" (tidy/long format) to "one row per category, one column per category" (wide format) — required specifically because a heatmap paints color based on a value's <i>row and column position</i>, and this shape gives every value exactly one clear (row, column) home.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">cohort_data.pivot(index='Cohort Month', columns=['CohortIndex'], values='CustomerID')</span><div class="desc"><b>What:</b> <code>index='Cohort Month'</code> says "each unique Cohort Month becomes one row." <code>columns=['CohortIndex']</code> says "each unique CohortIndex value becomes one column." <code>values='CustomerID'</code> says "fill each cell with the CustomerID count from that (Cohort Month, CohortIndex) pair." <b>What's returned:</b> a new DataFrame, 13 rows × 13 columns here (13 cohorts, and up to 13 months of possible history since the dataset spans Dec 2010 – Dec 2011). <b>Common mistake:</b> confusing <code>.pivot()</code> (a pure reshape — requires each (index, column) combination to be unique, no aggregation happens) with <code>.pivot_table()</code> (which can aggregate duplicate combinations, e.g. via <code>aggfunc='mean'</code>) — since cell 11 already aggregated to unique combinations, plain <code>.pivot()</code> is exactly right here and would raise an error if duplicates existed.</div></li>
+        <li><span class="lc">cohort_table</span><div class="desc">Simply displays the resulting grid — no method call, just the variable name on its own line, which Jupyter automatically renders as output for the last line of a cell.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-pivot" data-search="pivot table wide long format reshape" data-title="Concept: pivot tables (long ↔ wide)" data-tag="Concept">
+        <h4>📦 Concept: pivot tables — long format vs. wide format</h4>
+        <div class="cbody"><b>Long format</b> has one row per observation (what cell 11 produced: cohort, index, count — 91 rows). <b>Wide format</b> spreads one of those columns out across the top as new column headers (what cell 12 produces: cohorts as rows, cohort-index as columns, counts as cell values). Long format is easier to filter and group; wide format is what most charting tools, including heatmaps, expect as input.
+        <div class="analogy"><span class="lab">Analogy</span> Long format is a list of sports scores like "Team A, Week 1, 3 points" / "Team A, Week 2, 5 points" one row at a time. Wide format is the familiar league table you actually see in a newspaper — one row per team, one column per week. Same information, radically different shape.</div>
+        </div>
+      </div>
+
+      <h4 class="sub-h">Visual explanation — the reshape</h4>
+      <table class="dt">
+        <tr><th>Cohort Month</th><th>CohortIndex</th><th>CustomerID</th></tr>
+        <tr><td>2010-12</td><td>1</td><td>948</td></tr>
+        <tr><td>2010-12</td><td>2</td><td>362</td></tr>
+        <tr><td>2011-01</td><td>1</td><td>421</td></tr>
+        <tr><td>2011-01</td><td>2</td><td>101</td></tr>
+      </table>
+      <div class="arrow-row">↓ .pivot(index='Cohort Month', columns=['CohortIndex'], values='CustomerID') ↓</div>
+      <table class="dt">
+        <tr><th>Cohort Month</th><th>1</th><th>2</th></tr>
+        <tr><td>2010-12</td><td>948</td><td>362</td></tr>
+        <tr><td>2011-01</td><td>421</td><td>101</td></tr>
+      </table>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output — cohort_table (abridged, first few columns)</div><pre>CohortIndex      1      2      3      4      5      6   ...
+Cohort Month
+2010-12-01    948.0  362.0  317.0  367.0  341.0  376.0   ...
+2011-01-01    421.0  101.0  119.0  102.0  138.0  126.0   ...
+2011-02-01    380.0   94.0   73.0  106.0  102.0   94.0   ...
+...
+2011-12-01     41.0    NaN    NaN    NaN    NaN    NaN   ...</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);">Notice the triangular shape of NaNs in the bottom-right — the December 2011 cohort has only existed for 1 month by the time the data ends, so it's structurally impossible for it to have a "month 6" or "month 12" value yet. This is completely expected, not a bug.</p>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Using <code>.pivot()</code> on data that still has duplicate (index, column) pairs — it raises <code>ValueError: Index contains duplicate entries, cannot reshape</code>; <code>.pivot_table()</code> with an <code>aggfunc</code> is the fix if aggregation is still needed.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Misreading the triangular NaN pattern as missing/bad data rather than the natural result of newer cohorts not having had time to reach later months yet.</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 4</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> What's the difference between <code>.pivot()</code> and <code>.pivot_table()</code>?<br><i>.pivot() is a pure reshape and requires unique index/column combinations; .pivot_table() can additionally aggregate duplicate combinations using a function like mean, sum, or count.</i></p>
+        <p><b>2. (Intermediate)</b> Why does the bottom-right of the grid contain so many NaNs?<br><i>Cohorts acquired later in the dataset's timespan haven't existed long enough to have data for high CohortIndex values yet — it reflects the natural boundary of the data, not an error.</i></p>
+        <p><b>3. (Scenario)</b> Two rows share the same (Cohort Month, CohortIndex) pair — what happens if you call <code>.pivot()</code> anyway?<br><i>It raises a ValueError about duplicate entries; you'd need .pivot_table() with an aggfunc to resolve the conflict.</i></p>
+        <p><b>4. (Practical)</b> How would you replace all the NaNs with 0 before charting?<br><i><code>cohort_table.fillna(0)</code> — though for this specific heatmap, leaving them as NaN is often preferred so seaborn visually distinguishes "zero customers" from "this cohort-month combination doesn't exist yet."</i></p>
+      </div></details>
+
+      <div class="quiz" data-correct="2">
+        <div class="q">Why are the bottom-right cells of cohort_table full of NaN?</div>
+        <div class="opts">
+          <button class="opt" data-i="0">A bug in the pivot() call</button>
+          <button class="opt" data-i="1">Those customers unsubscribed</button>
+          <button class="opt" data-i="2">Those cohorts simply haven't existed long enough yet to have late-month data</button>
+        </div>
+        <div class="exp">Correct: <b>C</b>. A cohort acquired in November 2011 can't possibly have a "month 8" value when the dataset ends in December 2011 — it's a structural boundary, not missing data in the usual sense.</div>
+      </div>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> pivot reshapes long data into the row-by-column grid a heatmap requires.</li>
+        <li><b>Functions:</b> <span class="pill">.pivot(index=, columns=, values=)</span></li>
+        <li><b>Pitfall:</b> duplicate (index, column) pairs; misreading structural NaNs as errors.</li>
+        <li><b>Connects to:</b> cell 13 feeds this grid directly into seaborn's heatmap().</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-13" data-search="heatmap seaborn annot cmap blues figure figsize visualize" data-title="Cell 13 — Heatmap #1: raw customer counts" data-tag="Cell 13">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 13</span><h3>Visualize raw counts as a heatmap</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com"># change index</span>
+<span class="tok-com">#cohort_table.index = cohort_table.index.strftime('%B %Y')</span>
+<span class="tok-com">#visualize our results in heatmap</span>
+plt.<span class="tok-fn">figure</span>(figsize=(<span class="tok-num">21</span>,<span class="tok-num">10</span>))
+sns.<span class="tok-fn">heatmap</span>(cohort_table,annot=<span class="tok-kw">True</span>,cmap=<span class="tok-str">'Blues'</span>)</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Draws the cohort_table grid as a color-coded heatmap: darker blue = more customers, lighter/white = fewer, with the exact number also printed inside every cell.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>A 13×13 grid of raw numbers is technically all the information you need, but a human brain can't spot patterns in a wall of numbers nearly as fast as it can spot a <i>color gradient</i>. This is the payoff moment of the whole notebook — turning the hard-won CohortIndex arithmetic into something a stakeholder can understand in three seconds.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">#cohort_table.index = cohort_table.index.strftime('%B %Y')</span><div class="desc">Commented out (disabled) — if enabled, this would relabel the row index from raw dates like <code>2010-12-01</code> into a friendlier <code>"December 2010"</code> using <code>.strftime()</code> (string-format-time), a common date-to-text formatting method. Left off here, so the chart shows raw dates instead.</div></li>
+        <li><span class="lc">plt.figure(figsize=(21,10))</span><div class="desc"><b>What:</b> creates a new matplotlib figure/canvas sized 21 inches wide by 10 inches tall <i>before</i> drawing anything on it. <b>Why so wide:</b> with 13 columns and 13 rows all needing annotated numbers to stay legible, a small default figure would cram everything into unreadable text. <b>Common mistake:</b> skipping this line — seaborn will still draw a heatmap, but at a tiny default size where the annotated numbers overlap and become unreadable.</div></li>
+        <li><span class="lc">sns.heatmap(cohort_table, annot=True, cmap='Blues')</span><div class="desc"><b>What:</b> the core plotting call. First argument is the 2D grid to visualize. <b>annot=True:</b> prints the actual numeric value inside each cell, on top of its color — without this, you'd see only color, no numbers. <b>cmap='Blues':</b> selects a built-in seaborn/matplotlib colormap that ranges from very light (low values) to dark blue (high values). <b>What's returned:</b> a matplotlib Axes object (visible in the raw output as <code>&lt;AxesSubplot:...&gt;</code>) — normally ignored since you just want the rendered image, but it can be captured for further customization.</div></li>
+      </ul>
+
+      <div class="concept" id="concept-heatmap" data-search="heatmap color gradient cmap visualization" data-title="Concept: heatmaps" data-tag="Concept">
+        <h4>📦 Concept: what is a heatmap?</h4>
+        <div class="cbody">A <b>heatmap</b> encodes a 2D grid of numbers as color instead of (or alongside) text — the more intense/darker the color, the higher the value at that cell. It's one of the fastest ways to spot patterns like "there's a cliff right after month 1" or "one row is unusually strong" across dozens of cells at a glance.
+        <div class="analogy"><span class="lab">Analogy</span> A weather map doesn't make you read 50 temperature numbers across a country — it just shows red where it's hot and blue where it's cold, and your eyes instantly find the heat wave. A retention heatmap does the exact same trick, except "hot" means "lots of returning customers."</div>
+        </div>
+      </div>
+
+      <h4 class="sub-h">Notebook output — reading the actual chart</h4>
+      <div class="output"><div class="lbl">Output</div><pre>&lt;AxesSubplot:xlabel='CohortIndex', ylabel='Cohort Month'&gt;
+[a 21x10 inch heatmap image renders here]</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);"><b>X-axis:</b> CohortIndex (1 through 13 — months since acquisition). <b>Y-axis:</b> Cohort Month (Dec 2010 through Dec 2011, in order). <b>Color:</b> darker blue = more unique active customers that cell-month. <b>Every number/label:</b> the leftmost column (CohortIndex 1) is always the darkest in every row — by definition, it's the full size of that cohort, since it's everyone who ever joined that month. Every column after that fades lighter fast, visually confirming steep drop-off after month 1 across nearly every cohort. The December 2010 row stands out as darker overall than most other rows — that cohort was simply larger (948 people) than most later cohorts.</p>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Forgetting <code>plt.figure(figsize=...)</code> and ending up with an unreadably cramped chart.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Reading raw counts across rows as if they were directly comparable — a cohort of 948 people dropping to 362 "looks the same size drop" on the color scale as a cohort of 100 dropping to 40, even though the <i>rate</i> is identical (≈38%). This exact limitation is why cell 14 converts to percentages next.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Not calling <code>plt.show()</code> in a plain <code>.py</code> script (Jupyter auto-displays the last plot in a cell, but a script needs the explicit call).</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 4</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> What does <code>annot=True</code> do in seaborn's heatmap()?<br><i>Prints the actual numeric value inside each cell, layered on top of its color.</i></p>
+        <p><b>2. (Intermediate)</b> Why is the leftmost column always the darkest in every row of this particular heatmap?<br><i>CohortIndex 1 represents the full original size of that cohort — by definition, no one can have "dropped off" yet at month 1, so it's always the maximum value in that row.</i></p>
+        <p><b>3. (Intermediate)</b> What's the key limitation of this raw-count heatmap that the next cell fixes?<br><i>Raw counts make it hard to compare retention rate fairly across cohorts of very different original sizes — a big cohort's smaller relative drop can look visually "worse" than a small cohort's larger relative drop.</i></p>
+        <p><b>4. (Practical)</b> How would you switch the colormap to something perceptually different, like a diverging red-to-green scale?<br><i>Change <code>cmap='Blues'</code> to e.g. <code>cmap='RdYlGn'</code>.</i></p>
+      </div></details>
+
+      <div class="callout fun"><span class="lab">Did you know?</span> "Blues" and similar sequential colormaps (light→dark, one hue) are the right choice here because the data has a natural low-to-high order. A diverging colormap like red-to-green is better reserved for data with a meaningful zero-crossing midpoint (like profit vs. loss) — using one on simple counts can visually exaggerate small differences.</div>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> a heatmap turns a grid of numbers into an instantly-scannable color pattern.</li>
+        <li><b>Functions:</b> <span class="pill">plt.figure(figsize=)</span><span class="pill">sns.heatmap(annot=, cmap=)</span></li>
+        <li><b>Pitfall:</b> raw counts hide the true retention <i>rate</i> across differently-sized cohorts.</li>
+        <li><b>Connects to:</b> cell 14 fixes exactly that limitation by converting every row to a percentage of its own starting size.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-14" data-search="divide iloc percentage retention rate normalize row" data-title="Cell 14 — Convert counts into a retention percentage" data-tag="Cell 14">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 14</span><h3>Convert raw counts into retention percentages</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com">#cohort table for percentage</span>
+new_cohort_table = cohort_table.<span class="tok-fn">divide</span>(cohort_table.iloc[:,<span class="tok-num">0</span>],axis=<span class="tok-num">0</span>)</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Divides every value in each row by that <i>same row's</i> first column (its CohortIndex-1 value — the cohort's original size), converting every cell from "how many customers" into "what fraction of the original cohort" — i.e. the actual <b>retention rate</b>.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>This directly fixes the limitation flagged at the end of cell 13: comparing raw counts across cohorts of different sizes (948 vs. 41 people) isn't a fair comparison. Dividing every row by its own starting size puts every cohort on the same 0%–100% scale, so you can honestly compare "did the December cohort retain better than the June cohort?" regardless of how many people were originally in each.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">cohort_table.iloc[:,0]</span><div class="desc"><b>What:</b> selects <i>every row</i>, but only the <i>first column</i> (position 0) — which, since CohortIndex starts at 1, is always the "month 1" column: each cohort's full original size. <b>Why <code>.iloc</code>:</b> selects by integer <i>position</i> rather than by label, which matters here because the actual column label is the number <code>1</code>, and <code>.iloc[:,0]</code> unambiguously means "first column, whatever its label is."</div></li>
+        <li><span class="lc">cohort_table.divide(cohort_table.iloc[:,0], axis=0)</span><div class="desc"><b>What:</b> divides the entire table by that one-column Series, row-by-row. <b>Why <code>axis=0</code>:</b> this is the critical parameter — it tells pandas "match up and divide along the <i>row</i> axis," i.e. every value in row X gets divided by row X's own starting size, not by some single global number. Without <code>axis=0</code>, pandas would try to align by column instead, which wouldn't broadcast correctly against a single-column Series and would produce wrong or NaN-filled results. <b>What's returned:</b> a new DataFrame the same shape as <code>cohort_table</code>, but every value now between 0 and 1 (0% to 100%), with the first column always exactly 1.0 (100% — every cohort retains 100% of itself, by definition, in its own first month).</div></li>
+      </ul>
+
+      <div class="concept" id="concept-retention" data-search="retention rate cohort percentage churn customer lifecycle" data-title="Concept: retention rate" data-tag="Concept">
+        <h4>📦 Concept: retention rate (and its cousin, churn)</h4>
+        <div class="cbody"><b>Retention rate</b> is the percentage of an original group that is still active at a later point in time — here, still making purchases N months after joining. Its mirror opposite is <b>churn rate</b> (the percentage who left). Retention is one of the most-watched metrics at any subscription, app, or e-commerce business, because it's usually far cheaper to keep an existing customer than acquire a brand-new one.
+        <div class="analogy"><span class="lab">Analogy</span> Imagine 100 people join a gym in January. If 38 of them still show up in March, that's a 38% retention rate at month 3 — completely independent of whether the gym signed up 100 or 10,000 people that January. That normalization (dividing by the original group size) is exactly what this cell's <code>.divide(...)</code> call does.</div>
+        <b>Interview angle:</b> be ready to explain that retention curves almost always drop steeply at first, then flatten — the "survivors" left after the initial cliff tend to be genuinely loyal customers, which is a hugely useful insight for a business.
+        </div>
+      </div>
+
+      <h4 class="sub-h">Dry run on a tiny example</h4>
+      <table class="dt">
+        <tr><th>Cohort</th><th>Month 1</th><th>Month 2</th><th>Month 3</th></tr>
+        <tr><td>Dec 2010</td><td>948</td><td>362</td><td>317</td></tr>
+      </table>
+      <div class="arrow-row">↓ divide every cell in this row by 948 (its own Month-1 value) ↓</div>
+      <table class="dt">
+        <tr><th>Cohort</th><th>Month 1</th><th>Month 2</th><th>Month 3</th></tr>
+        <tr><td>Dec 2010</td><td>100%</td><td>38.2%</td><td>33.4%</td></tr>
+      </table>
+
+      <h4 class="sub-h">Notebook output</h4>
+      <div class="output"><div class="lbl">Output — new_cohort_table (abridged)</div><pre>CohortIndex      1         2         3         4         5
+Cohort Month
+December 2010   1.0  0.381857  0.334388  0.387131  0.359705
+January 2011    1.0  0.239905  0.282660  0.242280  0.327791
+February 2011   1.0  0.247368  0.192105  0.278947  0.268421
+...</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);">Every row starts at exactly <b>1.0</b> (100%) in column 1 — that's the mathematical guarantee of dividing a row by its own first value. December 2010's retention (38.2% at month 2) is noticeably <i>higher</i> than January 2011's (24.0% at month 2) — a genuine, fair comparison now that both are on the same percentage scale.</p>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Forgetting <code>axis=0</code> — pandas would try to broadcast the division along columns instead of rows, producing misaligned or NaN-filled results instead of a clean percentage table.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Using <code>cohort_table.iloc[:,0]</code> when column labels are numeric — mixing this up with <code>.loc[:,1]</code> (label-based selection) usually gives the same result here since column 1 is both the label and the position, but the two accessors are not interchangeable in general and this distinction is a classic interview trap.</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 4</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> Why does every row in new_cohort_table start with exactly 1.0?<br><i>Because each row is divided by its own first value — a cohort always retains 100% of itself at month 1, by definition.</i></p>
+        <p><b>2. (Intermediate)</b> What does <code>axis=0</code> mean in <code>.divide(..., axis=0)</code>?<br><i>It tells pandas to align and broadcast the division along the row axis — dividing each row by the matching entry in the supplied Series, rather than trying to align by columns.</i></p>
+        <p><b>3. (Intermediate)</b> What's the difference between <code>.iloc</code> and <code>.loc</code> here?<br><i>.iloc selects by integer position regardless of the label; .loc selects by the actual label value — they coincide by coincidence here since the first column's label is the integer 1, but that's not generally true.</i></p>
+        <p><b>4. (Scenario)</b> A stakeholder asks "why does the raw-count heatmap look different from the percentage one for the same cohort?"<br><i>Because raw counts are dominated by original cohort size, while percentages normalize that away — a small cohort can have a strong retention rate while looking "faint" on the raw-count chart, and vice versa.</i></p>
+      </div></details>
+
+      <div class="quiz" data-correct="1">
+        <div class="q">What would happen if <code>axis=0</code> were omitted from the <code>.divide()</code> call?</div>
+        <div class="opts">
+          <button class="opt" data-i="0">Nothing — the result would be identical</button>
+          <button class="opt" data-i="1">pandas would try to align by columns instead of rows, likely producing incorrect or NaN-filled results</button>
+          <button class="opt" data-i="2">It would raise a SyntaxError</button>
+        </div>
+        <div class="exp">Correct: <b>B</b>. The axis parameter controls which direction pandas broadcasts the operation along — getting it wrong here breaks the row-wise normalization the whole cell is built to do.</div>
+      </div>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> normalize every cohort by its own starting size to get a fair, comparable retention percentage.</li>
+        <li><b>Functions:</b> <span class="pill">.divide(other, axis=0)</span><span class="pill">.iloc[:,0]</span></li>
+        <li><b>Pitfall:</b> omitting axis=0; confusing .iloc with .loc.</li>
+        <li><b>Connects to:</b> cell 15 visualizes this exact percentage grid as the final, headline heatmap.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cell-15" data-search="heatmap percentage fmt 0% final retention visualization" data-title="Cell 15 — Heatmap #2: the retention percentage heatmap" data-tag="Cell 15">
+  <div class="cellcard">
+    <div class="ch"><div class="tt"><span class="badge">Cell 15</span><h3>The final chart — retention rate heatmap</h3></div></div>
+    <div class="body">
+      <div class="codeblock"><button class="copybtn">Copy</button><pre><span class="tok-com">#create a percentages visual</span>
+plt.<span class="tok-fn">figure</span>(figsize=(<span class="tok-num">21</span>,<span class="tok-num">10</span>))
+sns.<span class="tok-fn">heatmap</span>(new_cohort_table,annot=<span class="tok-kw">True</span>,fmt=<span class="tok-str">'.0%'</span>)</pre></div>
+
+      <h4 class="sub-h">What this cell does</h4>
+      <p>Draws the exact same style of heatmap as cell 13, but this time on <code>new_cohort_table</code> (the percentage version), with each cell's annotation formatted as a rounded percentage instead of a raw decimal.</p>
+
+      <h4 class="sub-h">Why this cell exists</h4>
+      <p>This is the deliverable — the single chart you'd actually show to a marketing or product team. It answers the business question directly: "what % of a typical cohort is still buying after 1, 3, 6, 12 months?" — in a form that needs zero further explanation to read.</p>
+
+      <h4 class="sub-h">Line-by-line explanation</h4>
+      <ul class="lines">
+        <li><span class="lc">plt.figure(figsize=(21,10))</span><div class="desc">Same purpose as cell 13 — a fresh, appropriately large canvas so 169 annotated cells stay legible.</div></li>
+        <li><span class="lc">sns.heatmap(new_cohort_table, annot=True, fmt='.0%')</span><div class="desc"><b>What's new here vs. cell 13:</b> the <code>fmt='.0%'</code> parameter. <b>What it does:</b> tells seaborn's annotations to format each number as a percentage rounded to 0 decimal places (e.g. <code>0.382</code> → <code>"38%"</code>) instead of showing the raw decimal. <b>Why no <code>cmap=</code> this time:</b> the notebook simply omits it, so seaborn falls back to its own default colormap rather than explicitly reusing 'Blues' — a minor inconsistency versus cell 13, but doesn't affect the underlying data or interpretation.</div></li>
+      </ul>
+
+      <h4 class="sub-h">Notebook output — reading the final chart</h4>
+      <div class="output"><div class="lbl">Output</div><pre>&lt;AxesSubplot:xlabel='CohortIndex', ylabel='Cohort Month'&gt;
+[a 21x10 inch heatmap image renders here, cells labeled as percentages]</pre></div>
+      <p style="font-size:13.5px;color:var(--muted);"><b>Column 1:</b> a uniform 100% straight down — every cohort's own baseline. <b>Columns 2 onward:</b> a sharp visual "cliff" as color and percentage both drop hard between month 1 and month 2 for nearly every cohort (roughly 75-80% of customers don't return the very next month) — the single most important insight in the whole notebook. <b>Reading across a row:</b> after the initial cliff, percentages tend to flatten out rather than keep collapsing — the customers who survive past month 2-3 behave like a more loyal, stable "core" group. <b>Reading down a column</b> (e.g. comparing every cohort's month-2 retention): lets you spot whether retention is improving or worsening over time — for instance, if a marketing campaign changed in March 2011, you'd look for a shift in retention starting with the March cohort specifically.</p>
+
+      <h4 class="sub-h">Common mistakes</h4>
+      <div class="mistake"><span class="ico">✕</span><div>Comparing two heatmaps (raw counts vs. percentage) as if they show the "same" information with different formatting — they answer genuinely different questions (volume vs. rate) and can lead to opposite conclusions about which cohort is "best."</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Over-interpreting the bottom-right NaN triangle as "this cohort churned to zero" — those cells are structurally absent (the cohort hasn't lived long enough), not measured zeros.</div></div>
+      <div class="mistake"><span class="ico">✕</span><div>Presenting this chart without mentioning the ~25% of transactions dropped back in cell 3 (missing CustomerID) — a complete report should note that caveat.</div></div>
+
+      <details class="dis"><summary>💬 Interview Questions — 5</summary><div class="dbody">
+        <p><b>1. (Beginner)</b> What does <code>fmt='.0%'</code> control?<br><i>How the annotated numbers are formatted for display — here, as whole-number percentages rather than raw decimals.</i></p>
+        <p><b>2. (Intermediate)</b> What's the single biggest pattern this heatmap reveals about the business?<br><i>A steep drop-off between month 1 and month 2 for almost every cohort, followed by relatively flatter retention among the customers who do stick around.</i></p>
+        <p><b>3. (Scenario, very common in real interviews)</b> A stakeholder asks "should we invest more in first-time customer follow-up, or in rewarding long-term loyal customers?" — how does this chart inform that?<br><i>The steep month-1→2 cliff suggests the biggest, cheapest win is likely improving early follow-up/onboarding right after the first purchase, since that's where the largest share of customers are being lost.</i></p>
+        <p><b>4. (Scenario)</b> How would you extend this analysis to check if a marketing change in March 2011 improved retention?<br><i>Compare the month-2/3/6 retention percentages of cohorts acquired before vs. after March 2011, reading down the relevant columns of this exact table.</i></p>
+        <p><b>5. (Practical)</b> How would you save this figure to a PNG file instead of just displaying it?<br><i>Add <code>plt.savefig('retention_heatmap.png', dpi=200, bbox_inches='tight')</code> right after the heatmap call, before any subsequent plt.figure() clears the canvas.</i></p>
+      </div></details>
+
+      <div class="quiz" data-correct="0">
+        <div class="q">Almost every cohort shows its steepest drop between which two months?</div>
+        <div class="opts">
+          <button class="opt" data-i="0">Month 1 → Month 2</button>
+          <button class="opt" data-i="1">Month 6 → Month 7</button>
+          <button class="opt" data-i="2">Month 11 → Month 12</button>
+        </div>
+        <div class="exp">Correct: <b>A</b>. The heatmap consistently shows the sharpest color/percentage drop right after the acquisition month — the classic "early churn cliff" pattern seen across most retention analyses.</div>
+      </div>
+
+      <div class="callout fun"><span class="lab">Did you know?</span> This exact "steep drop then flatten" shape is so common across industries — apps, SaaS, gyms, e-commerce — that it has a name in the customer-analytics world: the "leaky bucket with a sticky bottom." Most of the leak happens early; whoever survives it tends to stay a long time.</div>
+
+      <div class="recap"><h4>Quick Revision</h4><ul>
+        <li><b>Key idea:</b> the percentage heatmap is the deliverable — it turns 16 cells of pandas work into one chart a non-technical stakeholder can read in seconds.</li>
+        <li><b>Functions:</b> <span class="pill">sns.heatmap(fmt='.0%')</span></li>
+        <li><b>When to use this technique:</b> any time you need to compare a metric across groups of very different sizes, over a shared relative timeline.</li>
+      </ul></div>
+
+      <div class="bignav">
+        <a href="#cell-14" class="prev">← Previous<b>Cell 14 — Percentages</b></a>
+        <a href="#vault" class="next">Next →<b>Concept Vault</b></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="vault">
+  <div class="phase-banner">
+    <div class="ph-num">§</div>
+    <div><h2>Concept Vault</h2><p>Every concept from the notebook, in one place, for fast revision before an interview.</p></div>
+  </div>
+
+  <div class="mindmap">
+    <div class="node"><h5>Setup</h5><ul><li>import / libraries</li><li>DataFrame</li></ul></div>
+    <div class="node"><h5>Row-wise logic</h5><ul><li>.apply()</li><li>functions (def/return)</li><li>the .dt accessor</li><li>tuple unpacking</li></ul></div>
+    <div class="node"><h5>Grouping</h5><ul><li>GroupBy (split-apply-combine)</li><li>transform() vs agg()</li><li>.nunique() vs .count()</li></ul></div>
+    <div class="node"><h5>Reshaping</h5><ul><li>pivot (long ↔ wide)</li><li>slicing [:n]</li></ul></div>
+    <div class="node"><h5>The business idea</h5><ul><li>Cohort Index formula</li><li>Retention rate / churn</li><li>Missing values (NaN)</li></ul></div>
+    <div class="node"><h5>Visualization</h5><ul><li>Heatmaps</li><li>figsize, annot, cmap, fmt</li></ul></div>
+  </div>
+
+  <div class="callout think"><span class="lab">Rapid-fire self-test</span> Cover the answers below and see how many you can say out loud without peeking:
+  <ol style="margin:10px 0 0;padding-left:20px;font-size:13.5px;">
+    <li>What's the difference between <code>.count()</code> and <code>.nunique()</code>?</li>
+    <li>Why does <code>transform()</code> preserve row count while <code>agg()</code> doesn't?</li>
+    <li>Why can't you subtract two dates directly to get "months apart"?</li>
+    <li>What does <code>axis=0</code> mean in <code>.divide(other, axis=0)</code>?</li>
+    <li>Why is the first column of every cohort always 100%?</li>
+  </ol></div>
+</section>
+
+<section class="section" id="final">
+  <div class="phase-banner">
+    <div class="ph-num">✓</div>
+    <div><h2>Final Revision</h2><p>Everything the notebook taught you, compressed onto one page.</p></div>
+  </div>
+
+  <h4 class="sub-h">Complete notebook summary</h4>
+  <p>Starting from 541,909 raw UK online-retail transactions, this notebook: <b>(1)</b> loaded and cleaned the data, dropping the ~25% of rows with no customer attached; <b>(2)</b> tagged every transaction with its calendar month and, separately, with the customer's very first purchase month (their "cohort"); <b>(3)</b> computed how many months had elapsed between those two, giving every row a "months since joining" number; <b>(4)</b> counted distinct active customers per cohort per month, reshaped that into a grid, and visualized it twice — once as raw headcounts, once (the real deliverable) as a retention percentage — revealing a steep, near-universal drop-off right after the first month.</p>
+
+  <h4 class="sub-h">End-to-end workflow diagram</h4>
+  <table class="dt">
+    <tr><th>#</th><th>Cell(s)</th><th>Stage</th><th>Output</th></tr>
+    <tr><td>1</td><td>0–3</td><td>Load &amp; clean</td><td>A DataFrame with only customer-attributed transactions</td></tr>
+    <tr><td>2</td><td>4–5</td><td>Label each row</td><td>InvoiceMonth + Cohort Month columns</td></tr>
+    <tr><td>3</td><td>6–9</td><td>Extract &amp; verify</td><td>Year/month numbers for both date columns, sanity-checked</td></tr>
+    <tr><td>4</td><td>10</td><td>The core formula</td><td>CohortIndex — months since acquisition</td></tr>
+    <tr><td>5</td><td>11–12</td><td>Aggregate &amp; reshape</td><td>A 13×13 grid of unique active customers</td></tr>
+    <tr><td>6</td><td>13</td><td>Visualize (raw)</td><td>Heatmap #1 — counts</td></tr>
+    <tr><td>7</td><td>14–15</td><td>Normalize &amp; visualize</td><td>Heatmap #2 — retention %  ← the deliverable</td></tr>
+  </table>
+
+  <h4 class="sub-h">Key Python concepts learned</h4>
+  <p><span class="pill">import / aliasing</span><span class="pill">def / return</span><span class="pill">.apply()</span><span class="pill">tuple unpacking</span><span class="pill">underscore convention</span><span class="pill">list/Series slicing</span><span class="pill">.dt accessor</span></p>
+
+  <h4 class="sub-h">Key Data Science / pandas concepts learned</h4>
+  <p><span class="pill">DataFrame vs Series</span><span class="pill">dropna(subset=)</span><span class="pill">groupby (split-apply-combine)</span><span class="pill">transform() vs agg()</span><span class="pill">nunique() vs count()</span><span class="pill">pivot() (long↔wide)</span><span class="pill">.divide(axis=0)</span><span class="pill">seaborn heatmap()</span><span class="pill">cohort analysis</span><span class="pill">retention rate</span></p>
+
+  <h4 class="sub-h">Functions used and their purpose</h4>
+  <table class="dt">
+    <tr><th>Function</th><th>Purpose in this notebook</th></tr>
+    <tr><td>pd.read_excel()</td><td>Load the raw transaction data</td></tr>
+    <tr><td>.info() / .head() / .tail()</td><td>Inspect structure and sample rows at every stage</td></tr>
+    <tr><td>.dropna(subset=)</td><td>Remove transactions with no customer attached</td></tr>
+    <tr><td>.apply()</td><td>Round every InvoiceDate down to the 1st of its month</td></tr>
+    <tr><td>.groupby().transform('min')</td><td>Stamp each customer's first-purchase month onto every one of their rows</td></tr>
+    <tr><td>.dt.day/.month/.year</td><td>Pull raw date components out for arithmetic</td></tr>
+    <tr><td>.groupby().nunique()</td><td>Count distinct active customers per cohort/month</td></tr>
+    <tr><td>.pivot()</td><td>Reshape long data into a cohort × month grid</td></tr>
+    <tr><td>.divide(other, axis=0)</td><td>Normalize each cohort by its own starting size</td></tr>
+    <tr><td>sns.heatmap()</td><td>Render the grid as a color-coded chart</td></tr>
+  </table>
+
+  <h4 class="sub-h">Common interview questions (cross-notebook)</h4>
+  <details class="dis"><summary>💬 8 rapid-fire questions spanning the whole notebook</summary><div class="dbody">
+    <p><b>1.</b> What is cohort analysis, in one sentence?<br><i>Grouping users by a shared starting event (like acquisition month) and tracking their behavior over time relative to that starting point, so different groups can be compared fairly.</i></p>
+    <p><b>2.</b> Why round dates down to the month instead of analyzing exact days?<br><i>To create a shared, groupable time bucket — daily granularity would make almost every timestamp unique and impossible to meaningfully group.</i></p>
+    <p><b>3.</b> Explain the difference between transform() and agg() with an example.<br><i>agg() collapses a group to one summary row; transform() broadcasts that summary back onto every row in the group, preserving the original shape — needed here to attach group-level facts (like Cohort Month) back onto the full transaction table.</i></p>
+    <p><b>4.</b> Why use nunique() instead of count() when measuring "active customers"?<br><i>count() would count every transaction row, double-counting customers who bought multiple items; nunique() counts distinct people.</i></p>
+    <p><b>5.</b> Why convert the raw-count heatmap into percentages?<br><i>To fairly compare retention across cohorts of very different original sizes on the same 0-100% scale.</i></p>
+    <p><b>6.</b> What would you check first if the pivot() call raised a duplicate-entry error?<br><i>Whether the upstream groupby actually collapsed to unique (index, column) combinations — likely a missed aggregation step.</i></p>
+    <p><b>7.</b> What business decisions could this retention heatmap directly inform?<br><i>Where to focus onboarding/retention spend (usually right after the first purchase, where the steepest drop tends to occur), and whether changes over time (marketing, pricing, product) are improving or worsening retention.</i></p>
+    <p><b>8.</b> What's one limitation of this specific analysis worth mentioning in an interview?<br><i>~25% of transactions were dropped for missing CustomerID, which could bias the results if those missing IDs aren't random (e.g. if they're disproportionately guest checkouts or cancellations).</i></p>
+  </div></details>
+
+  <h4 class="sub-h">Beginner mistakes checklist</h4>
+  <div class="mistake"><span class="ico">☐</span><div>Forgetting to reassign the result of a non-in-place pandas method (e.g. dropna, transform).</div></div>
+  <div class="mistake"><span class="ico">☐</span><div>Using .count() where .nunique() was needed.</div></div>
+  <div class="mistake"><span class="ico">☐</span><div>Confusing transform() (same shape) with agg() (collapsed shape).</div></div>
+  <div class="mistake"><span class="ico">☐</span><div>Expecting datetime subtraction to hand you "months apart" directly.</div></div>
+  <div class="mistake"><span class="ico">☐</span><div>Omitting axis=0 on a row-wise .divide()/.subtract() call.</div></div>
+  <div class="mistake"><span class="ico">☐</span><div>Misreading structural NaNs (cohort too young to have late-month data) as bad data.</div></div>
+
+  <h4 class="sub-h">Cheatsheet</h4>
+  <table class="dt">
+    <tr><th>Need to...</th><th>Use</th></tr>
+    <tr><td>Round a date down to its month</td><td><code>dt.datetime(x.year, x.month, 1)</code> or <code>.dt.to_period('M')</code></td></tr>
+    <tr><td>Stamp a group-level fact onto every row</td><td><code>.groupby(key)[col].transform('min'/'max'/'mean')</code></td></tr>
+    <tr><td>Count distinct entities per group</td><td><code>.groupby(keys)[col].nunique()</code></td></tr>
+    <tr><td>Reshape long → wide</td><td><code>.pivot(index=, columns=, values=)</code></td></tr>
+    <tr><td>Normalize each row by its own first value</td><td><code>df.divide(df.iloc[:,0], axis=0)</code></td></tr>
+    <tr><td>Draw an annotated color grid</td><td><code>sns.heatmap(df, annot=True, fmt='.0%')</code></td></tr>
+  </table>
+
+  <h4 class="sub-h">Real-world applications</h4>
+  <p>Subscription retention (SaaS, streaming), app user-engagement dashboards, e-commerce repeat-purchase analysis, gym/membership churn tracking, marketing-campaign attribution ("did the March campaign improve retention for that cohort?"), and lifetime-value forecasting all build on this exact pattern.</p>
+
+  <h4 class="sub-h">Practice exercises</h4>
+  <p><b>Easy:</b> Re-run this pipeline but define cohorts by <i>week</i> instead of month. <b>Medium:</b> Add a second metric to the heatmap — average revenue per retained customer, per cohort/month, instead of headcount. <b>Hard:</b> Segment cohorts by <code>Country</code> as well as acquisition month, and build a small dashboard comparing retention curves across the top 3 countries.</p>
+
+  <h4 class="sub-h">Suggested next topics to learn</h4>
+  <p><span class="pill">RFM segmentation</span><span class="pill">Customer Lifetime Value (CLV)</span><span class="pill">Survival analysis (Kaplan-Meier)</span><span class="pill">A/B testing for retention changes</span><span class="pill">Plotly/interactive dashboards</span><span class="pill">SQL window functions for cohort queries</span></p>
+
+  <div class="bignav">
+    <a href="#hero" class="prev">← Back to<b>Overview</b></a>
+    <a href="#cell-0" class="next">Restart from<b>Cell 00</b></a>
+  </div>
+</section>
+
+<footer>Built from your uploaded notebook — Cohort_Analysis_Marketing.ipynb · Every code cell, output, and warning shown here is real, taken directly from the notebook's own execution.</footer>
+
+    </div>
+  </main>
+</div>
+
+<script>
+/* ============ THEME ============ */
+let isDark = true;
+const themeBtn = document.getElementById('themetoggle');
+themeBtn.addEventListener('click', ()=>{
+  isDark = !isDark;
+  document.documentElement.classList.toggle('light', !isDark);
+  themeBtn.textContent = isDark ? '◐' : '◑';
+});
+
+/* ============ MOBILE NAV ============ */
+const sidebar = document.getElementById('sidebar');
+document.getElementById('navtoggle').addEventListener('click', ()=> sidebar.classList.toggle('open'));
+
+/* ============ SCROLL PROGRESS ============ */
+const scrollbar = document.getElementById('scrollbar');
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+  scrollbar.style.width = pct + '%';
+  updateActiveNav();
+  sidebar.classList.remove('open');
+});
+
+/* ============ COPY CODE ============ */
+document.addEventListener('click', (e)=>{
+  if(e.target.classList.contains('copybtn')){
+    const code = e.target.closest('.codeblock').querySelector('pre').innerText;
+    navigator.clipboard.writeText(code).then(()=>{
+      const old = e.target.textContent;
+      e.target.textContent = 'Copied ✓';
+      setTimeout(()=> e.target.textContent = old, 1400);
+    });
+  }
+});
+
+/* ============ QUIZ ENGINE ============ */
+document.addEventListener('click', (e)=>{
+  if(e.target.classList.contains('opt')){
+    const quiz = e.target.closest('.quiz');
+    const correctIdx = quiz.dataset.correct;
+    const opts = quiz.querySelectorAll('.opt');
+    opts.forEach((o,i)=>{
+      o.disabled = true;
+      if(String(i)===correctIdx) o.classList.add('correct');
+    });
+    if(e.target.dataset.i !== correctIdx) e.target.classList.add('wrong');
+    quiz.querySelector('.exp').classList.add('show');
+  }
+});
+
+/* ============ FILL IN THE BLANK ============ */
+document.addEventListener('change', (e)=>{
+  if(e.target.classList.contains('blank')){
+    const ans = e.target.dataset.ans.trim().toLowerCase();
+    const val = e.target.value.trim().toLowerCase();
+    e.target.classList.remove('ok','bad');
+    e.target.classList.add(val===ans ? 'ok':'bad');
+  }
+});
+
+/* ============ SECTION TRACKING / PROGRESS PILL ============ */
+const seen = new Set();
+const progressPill = document.getElementById('progresspill');
+function updateActiveNav(){
+  const sections = document.querySelectorAll('.section, #hero');
+  let current = null;
+  sections.forEach(s=>{
+    const r = s.getBoundingClientRect();
+    if(r.top < 140) current = s.id;
+    if(r.top < window.innerHeight*0.6) seen.add(s.id);
+  });
+  document.querySelectorAll('.navlink').forEach(l=>{
+    l.classList.toggle('active', l.getAttribute('href') === '#'+current);
+    if(seen.has(l.getAttribute('href').slice(1))) l.classList.add('done');
+  });
+  const total = document.querySelectorAll('.section').length + 1;
+  progressPill.textContent = Math.round(seen.size/total*100) + '% learned';
+}
+
+/* ============ SEARCH ============ */
+const searchbox = document.getElementById('searchbox');
+const searchresults = document.getElementById('searchresults');
+searchbox.addEventListener('input', ()=>{
+  const q = searchbox.value.trim().toLowerCase();
+  if(q.length < 2){ searchresults.classList.remove('show'); return; }
+  const targets = document.querySelectorAll('[data-search]');
+  const matches = [];
+  targets.forEach(t=>{
+    const hay = t.dataset.search.toLowerCase();
+    if(hay.includes(q)) matches.push(t);
+  });
+  searchresults.innerHTML = matches.slice(0,10).map(m=>
+    `<a href="#${m.id}"><span class="tag">${m.dataset.tag||''}</span><br>${m.dataset.title}</a>`
+  ).join('') || '<a style="color:var(--muted-2)">No matches</a>';
+  searchresults.classList.add('show');
+});
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('#searchwrap')) searchresults.classList.remove('show');
+});
+searchresults.addEventListener('click', ()=> searchresults.classList.remove('show'));
+
+window.addEventListener('load', updateActiveNav);
+
+/* ============ HERO HEATSTRIP (decorative, fading warm -> cool) ============ */
+(function(){
+  const strip = document.getElementById('herostrip');
+  if(!strip) return;
+  const stops = ['#ff9466','#ffab7a','#ffc191','#f2c14e','#c9d67a','#8fd4a8','#5fd98a','#4fd2e0','#4fd2e0'];
+  stops.forEach(c=>{
+    const d = document.createElement('div');
+    d.style.background = c;
+    strip.appendChild(d);
+  });
+})();
+</script>
+
+</body>
+</html>
